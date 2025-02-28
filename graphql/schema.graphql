@@ -1,0 +1,16 @@
+
+directive @field(resolver: String) on FIELD_DEFINITION
+type Mutation{
+  register(name:String!, email:String!, password: String!):User! @field(resolver:"App\\GraphQL\\Mutations\\Register@__invoke")
+
+}
+type Query{
+  getSample: String @field(resolver:" App\\GraphQL\\Queries\\Sample@getSample")
+}
+
+type User{
+  id: ID!
+  name:String!
+  email:String!
+}
+
