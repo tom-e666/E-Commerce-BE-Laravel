@@ -1,10 +1,45 @@
 
-type User{
-  id:ID!
-  name:String!
-  email:String!
+#start login feature
+input UserLogInput
+{
+  username:String
+  email:String
+  phone:String
+  password:String!
 }
-type Query {
-  users: [User!]! @all  # ✅ Fetch all users
-  user(email: String): [User!] @field(resolver: "App\\GraphQL\\Queries\\UserQuery")  # ✅ Correct resolver path
+type UserLogResponse
+{
+  code:String!
+  token:String #JWT
+  message:String
 }
+type UserCredential {
+    id: ID
+    username: String
+    email: String
+    phone: String
+    email_verified: Boolean
+    phone_verified: Boolean
+    created_at: String
+}
+type UserQueryResponse 
+{
+  code:String!
+  message:String!
+  user:UserCredential
+
+}
+type Mutation {
+  signup(user: UserLogInput!):UserLogResponse! @field(resolver: "AuthResolver@signup")
+  login(user:UserLogInput!):UserLogResponse!@field(resolver: "AuthResolver@login")
+  logout(jwt:String!):Boolean!@field(resolver: "AuthResolver@logout")
+  refreshToken(jwt:String!):UserLogResponse!@field(resolver: "AuthResolver@refreshToken")
+  invalidateToken(jwt:String!):UserLogResponse! @field(resolver: "AuthResolver@invalidateToken")
+}
+type output{message:String}
+type Query{
+    getUserInfo(jwt:String):UserQueryResponse @field(resolver: "AuthResolver@getUserInfo")
+    check(message:String): output @field(resolver: "AuthResolver@check")
+    getTokenState(jwt:String):UserLogResponse! @field(resolver: "AuthResolver@getTokenState");
+}
+#end login feature
