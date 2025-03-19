@@ -21,57 +21,122 @@ final readonly class AuthResolver
     public function signup($_, array $args): array
     {
         $userData = $args['user'];
-        $validator = Validator::make($userData, [
-            'username' => 'string|unique:user_credentials',
-            'email' => 'string|email|unique:user_credentials',
-            'phone' => 'string|unique:user_credentials',
-            'password' => 'string|min:8|required  '
-        ]);
-        if ($validator->fails()) {
+        if(empty($userData['username']) && empty($userData['email']) && empty($userData['phone']))
+        {
+            return [
+                'code'=> 400,
+                'message'=>@'at least username|email|phone is provided',
+                'token'=> null, 
+            ];
+        }
+        if(empty($userData['username']))
+        {
+            if(!empty($userData['email']))
+            {
+                $userData['username'] = $userData['email'];
+            }else
+            {
+                $userData['username'] = $userData['phone'];
+            }
+        }
+        $rules= [
+            'password'=>'string|min:8|required ',
+        ];
+        
+        if(!empty($userData['username']))
+        {
+            $rules['username'] = 'string|unique:user_credentials';
+        }
+        if(!empty($userData['email']))
+        {
+            $rules['email'] = 'string|email|unique:user_credentials';
+
+        }
+        if(!empty($userData['phone']))
+        {
+            $rules['phone'] = 'string|unique:user_credentials';
+        }
+        
+        $validator = Validator::make($userData, $rules);
+        
+        if ($validator->fails()) 
             return [
                 'code' => 400,
                 'message' => $validator->errors(),
                 'token' => null,
             ];
+    
+        
+        $user = [
+            'password'=>Hash::make($userData['password']),
+            'email_verified'=>false,
+            'phone_verified'=>false,
+        ];
+        if(!empty($userData['username']))
+        {
+            $user['username'] = $userData['username'];
         }
-        $user = UserCredential::create([
-            'username' => $userData['username'],
-            'email' => $userData['email'],
-            'phone' => $userData['phone'],
-            'password' => $userData['password'],
-            'email_verified' => false,
-            'phone_verified' => false
-        ]);
-        $token = JWTAuth::fromUser($user);
+        if(!empty($userData['email']))
+        {
+            $user['email'] = $userData['email'];
+        
+        }
+        if(!empty($userData['phone']))
+        {
+            $user['phone'] = $userData['phone'];
+        }
+        $userCredInstance = UserCredential::create($user);
+        $token = JWTAuth::fromUser($userCredInstance);
         return [
             'code' => 200,
             'message' => 'success',
             'token' => $token,
         ];
     }
-    public function login($_, array $args): array
-    {
-        $userData = $args['user'];
-        $identifier = isset($userData['email']) ? 'email' : (isset($userData['phone']) ? 'phone' : 'username');
-        $value = $userData[$identifier];
-        $credentials = [
-            $identifier => $value,
-            'password' => $userData['password']
-        ];
-        if ($token = JWTAuth::attempt($credentials)) {
+ 
+public function login($_, array $args): array
+{
+    $userData = $args['user'];
+    $identifier = isset($userData['email']) ? 'email' : (isset($userData['phone']) ? 'phone' : 'username');
+    $value = $userData[$identifier];
+    $credentials = [
+        $identifier => $value,
+        'password' => $userData['password']
+    ];
 
-            return [
-                'code' => 200,
-                'message' => 'success',
-                'token' => $token,
-            ];
-        }
+    $user = UserCredential::where($identifier, $value)->first();
+
+    if (!$user) {
         return [
             'code' => 401,
-            'message' => 'invalid credentials',
+            'message' => 'User not found',
             'token' => null,
         ];
     }
+
+    if (!Hash::check($userData['password'], $user->password)) {
+       
+        return [
+            'code' => 401,
+            'message' => "Invalid password. Stored hash: {$user->password}",
+            'token' => null,
+        ];
+    }
+
+    if ($token = JWTAuth::attempt($credentials)) {
+        return [
+            'code' => 200,
+            'message' => 'success',
+            'token' => $token,
+        ];
+    }
+
+    return [
+        'code' => 401,
+        'message' => 'invalid credentials',
+        'token' => null,
+    ];
+}
     public function logout($_, array $args)
     {
 

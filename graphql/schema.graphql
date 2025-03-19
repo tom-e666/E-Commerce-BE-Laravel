@@ -40,6 +40,6 @@ type output{message:String}
 type Query{
     getUserInfo(jwt:String):UserQueryResponse @field(resolver: "AuthResolver@getUserInfo")
     check(message:String): output @field(resolver: "AuthResolver@check")
-    getTokenState(jwt:String):UserLogResponse! @field(resolver: "AuthResolver@getTokenState");
+    getTokenState(jwt:String):UserLogResponse! @field(resolver: "AuthResolver@getTokenState")
 }
 #end login feature

@@ -41,7 +41,7 @@ class UserCredential extends Authenticatable implements JWTSubject
      */
     public function setPasswordAttribute($value): void
     {
-        if (!Hash::needsRehash($value)) {
+        if (Hash::needsRehash($value)) {
             $this->attributes['password'] = Hash::make($value);
         } else {
             $this->attributes['password'] = $value;
