@@ -47,10 +47,12 @@ final readonly class ProductQuery
                 'product'=> null,
             ];
         }
+
         return [
             'code'=> 200,
             'message'=> 'success',
             'product'=> $product->load('details')->toArray(),
+            'reviews'=> $product->details->recentReviews(),
         ];
     }
     

@@ -49,24 +49,6 @@ return [
                 PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
         ],
-         'mongodb' => [
-            'driver' => 'mongodb',
-            // 'host' => env('MONGO_DB_HOST', '127.0.0.1'),
-            // 'port' => env('MONGO_DB_PORT', 27017),
-            'database' => env('MONGODB_DATABASE', 'E-Commerce-Laptop'),
-            'url' => env('MONGODB_URL'),
-            'jwt_secret' => env('JWT_SECRET'),
-            // 'username' => env('MONGO_DB_USERNAME', ''),
-            // 'password' => env('MONGO_DB_PASSWORD', ''),
-            // 'options' => [
-            //     'database' => env('MONGO_DB_AUTHENTICATION_DATABASE', 'admin'),
-            //     // Add more MongoDB-specific options here
-            //     'ssl' => env('MONGO_DB_SSL', false),
-            //     'replicaSet' => env('MONGO_DB_REPLICA_SET', ''),
-            //     'readPreference' => env('MONGO_DB_READ_PREFERENCE', 'primary'),
-            //     'retryWrites' => env('MONGO_DB_RETRY_WRITES', true),
-            // ],
-        ],
 
         'mongodb' => [
             'driver' => 'mongodb',

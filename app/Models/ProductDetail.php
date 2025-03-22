@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use Jenssegers\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Model;
 
 class ProductDetail extends Model
 {
@@ -26,4 +26,16 @@ class ProductDetail extends Model
     {
         return $this->belongsTo(Product::class, 'product_id', 'id');
     }
+    public function reviews()
+    {
+        return $this->hasMany(Review::class, 'product_detail_id', 'id');
+    }
+    public function recentReviews($amount = 5)
+    {
+        return $this->reviews()
+            ->orderBy('created_at', 'desc')
+            ->limit($amount)
+            ->get();
+    }
+
 }

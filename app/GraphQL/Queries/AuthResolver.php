@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\GraphQL\Queries;
 
-use App\Models\User;
 use http\Message;
 use Tymon\JWTAuth\Contracts\Providers\Auth;
 use Tymon\JWTAuth\Facades\JWTAuth;
@@ -31,6 +30,26 @@ final readonly class AuthResolver
     public function check($_, array $args): array
     {
         return ['message' => $args['message']];
+    }
+    public function checkConnection($_, array $args): array
+    {
+       try {
+        // Check MySQL connection
+        \DB::connection('mysql')->getPdo();
+
+        // Check MongoDB connection
+        \DB::connection('mongodb')->getMongoClient();
+
+        return [
+            'code' => 200,
+            'message' => 'success',
+        ];
+    } catch (\Exception $e) {
+        return [
+            'code' => 500,
+            'message' => 'Database connection failed: ' . $e->getMessage(),
+        ];
+    }
     }
     public function getTokenState($_, array $args): array
     {
