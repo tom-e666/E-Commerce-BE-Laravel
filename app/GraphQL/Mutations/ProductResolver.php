@@ -12,7 +12,6 @@ final readonly class ProductResolver
     {
         // TODO implement the resolver
     }
-
     public function createProduct($_, array $args)
     {
         // Validate input
@@ -108,6 +107,55 @@ final readonly class ProductResolver
                 'code' => 500,
                 'message' => $e->getMessage(),
                 'product' => null,
+            ];
+        }
+    }
+    public function updateProductDetail($_, array $args)
+    {
+        $validator=Validator::make($args,[
+            'product_id'=>'required|exists:products,id',
+            'name'=>'string',
+            'description'=>'string',
+            'images'=>'array',
+            'keywords'=>'array',
+            'specifications'=>'array',
+        ]);
+        if($validator->fails)
+        {
+            return [
+                'code'=>400,
+                'message'=>$validator->errors()->first(),
+                'product_detail'=>null,
+            ];
+        }
+        $productDetail=Productdetail::find($args['product_id']);
+        if(!$productDetail)
+        {
+            return [
+                'code'=>404,
+                'message'=>'Product detail not found',
+                'product_detail'=>null,
+            ];
+        }
+        try {
+            $productDetail->fill([
+                'name'=>$args['name']??$productDetail->name,
+                'description'=>$args['description']??$productDetail->description,
+                'images'=>$args['images']??$productDetail->images,
+                'keywords'=>$args['keywords']??$productDetail->keywords,
+                'specifications'=>$args['specifications']??$productDetail->specifications,
+            ]);
+            $productDetail->save();
+            return [
+                'code'=>200,
+                'message'=>'success',
+                'product_detail'=>$productDetail,
+            ];
+        } catch (\Exception $e) {
+            return [
+                'code'=>500,
+                'message'=>$e->getMessage(),
+                'product_detail'=>null,
             ];
         }
     }

@@ -21,4 +21,8 @@ class Product extends Model
         'stock' => 'integer',
         'status' => 'boolean',
     ];
+    public function details()
+    {
+        return $this->hasOne(ProductDetail::class, 'product_id', 'id');
+    }
 }
