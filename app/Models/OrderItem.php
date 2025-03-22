@@ -6,52 +6,54 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 class OrderItem extends Model
 {
-    //
     use HasFactory;
     protected $fillable=[
         'order_id',
         'product_id',
         'quantity',
         'price',
+        'total',
+        'promo_code',
         'created_at',
         'updated_at',
     ];
+    public function order()
+    {
+        return $this->belongsTo(Order::class, 'order_id', 'id');
+    }
+    public function product()
+    {
+        return $this->belongsTo(Product::class, 'product_id', 'id');
+    }
+    public function promotion()
+    {
+        return $this->belongsTo(Promotion::class, 'promo_code', 'code');
+    }
     protected static function boot()
     {
         parent::boot();
         static::creating(function($orderItem){
-            $orderItem->onCreate();
+            $orderItem->onChange();
         });
         static::updating(function($orderItem){
-            $orderItem->onUpdate();
+            $orderItem->onChange();
         });
         static::deleting(function($orderItem){
-            $orderItem->onDelete();
+            $orderItem->onChange();
         });
     }
-    public function onCreate()
-    {
-        $order=Order::find($this->order_id);
-        if($order===null){
-            return;
+    public function onChange()
+    {   
+        $this->price=$this->product->price;
+        $this->quantity=min($this->quantity,$this->product->stock);
+        $total=$this->price*$this->quantity;
+        if($this->promo_code)
+        {
+            $this->total=$this->promotion->applyPromotion($this);
         }
-        $order->total_price+=$this->price;
-    }
-    public function onUpdate()
-    {
-        $order=Order::find($this->order_id);
-        if($order===null){
-            return;
+        else
+        {
+            $this->total=$total;
         }
-        $order->total_price-=$this->getOriginal('price')*$this->getOriginal('quantity');
-        $order->total_price+=$this->price*$this->quantity;
-    }
-    public function onDelete()
-    {
-        $order=Order::find($this->order_id);
-        if($order===null){
-            return;
-        }
-        $order->total_price-=$this->price*$this->quantity;
     }
 }

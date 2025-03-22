@@ -16,4 +16,33 @@ class Order extends Model
         'created_at',
         'updated_at',
     ];
+    public function user()
+    {
+        return $this->belongsTo(UseCredential::class, 'user_id', 'id');
+    }
+    public function items()
+    {
+        return $this->hasMany(OrderItem::class, 'order_id', 'id');
+    }
+    public function payment()
+    {
+        return $this->hasOne(Payment::class, 'order_id', 'id');
+    }
+    protected static function boot()
+    {
+        parent::boot();
+        static::creating(function($order){
+            $order->onChange();
+        });
+        static::updating(function($order){
+            $order->onChange();
+        });
+        static::deleting(function($order){
+            $order->onChange();
+        });
+    }
+    protected function onChange()
+    {
+        
+    }
 }

@@ -109,4 +109,5 @@ final readonly class SupportTicketResolver
         $support_ticket_response->update([
             'status'=>$args['status']??$support_ticket_response->status,
         ]); 
+    }
 }

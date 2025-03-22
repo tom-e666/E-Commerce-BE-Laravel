@@ -17,7 +17,7 @@ class Product extends Model
         'created_at',
     ];
     protected $casts = [
-        'price' => 'float',
+        'price' => 'number',
         'stock' => 'integer',
         'status' => 'boolean',
     ];
