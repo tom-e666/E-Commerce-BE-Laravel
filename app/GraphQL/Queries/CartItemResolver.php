@@ -2,17 +2,14 @@
 
 namespace App\GraphQL\Queries;
 
-use App\Models\UserCredential;
-use App\Models\CartItem;
-
-final readonly class CartItemResolver
+final readonly class CartResolver
 {
     /** @param  array{}  $args */
     public function __invoke(null $_, array $args)
     {
         // TODO implement the resolver
     }
-
+  
     public function getCartItems($_, array $args)
     {
         if(!isset($args['user_id'])){
@@ -22,7 +19,7 @@ final readonly class CartItemResolver
                 'cart_items' => null,
             ];
         }
-        $user = UserCredential::find($args['user_id']);
+        $user = User::find($args['user_id']);
         if ($user === null) {
             return [
                 'code' => 404,

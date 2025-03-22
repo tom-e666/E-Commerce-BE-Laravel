@@ -12,7 +12,6 @@ class SupportTicket extends Model
         'subject',
         'message',
         'status',
-        'created_at',
     ];
     public function response(){
         return $this->hasMany(SupportTicketResponse::class, 'ticket_id', 'id');

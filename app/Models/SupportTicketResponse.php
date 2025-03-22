@@ -10,7 +10,6 @@ class SupportTicketResponse extends Model
         'ticket_id',
         'subject',
         'message',
-        'created_at',
     ];
     public function ticket()
     {

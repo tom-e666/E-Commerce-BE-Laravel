@@ -13,8 +13,6 @@ class Order extends Model
         'user_id',
         'total_price',
         'status',
-        'created_at',
-        'updated_at',
     ];
     public function user()
     {

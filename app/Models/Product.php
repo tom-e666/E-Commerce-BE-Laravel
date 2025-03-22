@@ -14,7 +14,6 @@ class Product extends Model
         'price',
         'stock',
         'status',
-        'created_at',
     ];
     protected $casts = [
         'price' => 'number',

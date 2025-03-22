@@ -15,8 +15,6 @@ class Promotion extends Model
         'start_date',
         'end_date',
         'status',
-        'created_at',
-        'updated_at',
         'user_rule',
         'product_id'
     ];
@@ -28,16 +26,8 @@ class Promotion extends Model
     {
         return $this->belongsToMany(Product::class, 'product_promotion', 'promotion_id', 'product_id');
     }
-    public function isValid($orderItem)
+    public function users()
     {
-        //find a way to make this later
-        return true;
-    }
-    public function applyPromotion($orderItem){
-           if($this->isValid($orderItem)){
-            //temporary discount
-               $orderItem->total = $orderItem->total - 100000;
-           }
-           return $orderItem->total;
+        return $this->belongsToMany(UserCredential::class, 'user_promotion', 'promotion_id', 'user_id');
     }
 }

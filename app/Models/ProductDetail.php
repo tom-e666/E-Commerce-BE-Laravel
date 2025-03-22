@@ -15,7 +15,6 @@ class ProductDetail extends Model
         'images',
         'keywords',
         'specifications',
-        'updated_at',
     ];
     protected $casts = [
         'specifications' => 'array',

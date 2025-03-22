@@ -12,7 +12,6 @@ class Shipping extends Model
         'carrier',
         'estimated_date',
         'status',
-        'created_at',
     ];
     public function order()
     {
