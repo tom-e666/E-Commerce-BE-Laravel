@@ -1,8 +1,9 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace App\GraphQL\Queries;
+use App\Models\Product;
 
-final readonly class ProductQuery
+final readonly class ProductResolver
 {
     /** @param  array{}  $args */
     public function __invoke(null $_, array $args)

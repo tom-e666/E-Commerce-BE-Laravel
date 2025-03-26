@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Models;
-
+use App\Models\UserCredential;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
@@ -16,9 +16,9 @@ class Product extends Model
         'status',
     ];
     protected $casts = [
-        'price' => 'number',
-        'stock' => 'integer',
-        'status' => 'boolean',
+        'price' => 'Float',
+        'stock' => 'Integer',
+        'status' => 'String',
     ];
     public function details()
     {
