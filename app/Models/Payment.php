@@ -13,6 +13,12 @@ class Payment extends Model
         'payment_status',
         'transaction_id',
     ];
+    protected $casts = [
+        'order_id'=>'String',
+        'payment_method'=>'String',
+        'payment_status'=>'String',
+        'transaction_id'=>'String',
+    ];
     public function order()
     {
         return $this->belongsTo(Order::class, 'order_id', 'id');

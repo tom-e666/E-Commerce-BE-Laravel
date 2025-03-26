@@ -16,14 +16,15 @@ class CartItem extends Model
         'product_id',
         'quantity',
         'price',
+        'total'
     ];
     // Cast attributes
     protected $casts = [
-        'user_id' => 'string',
-        'product_id' => 'string',
-        'quantity' => 'number',
-        'price' => 'number',
-        'total' => 'float', // Use 'float' instead of 'number'
+        'user_id' => 'String',
+        'product_id' => 'String',
+        'quantity' => 'Int',
+        'price' => 'Float',
+        'total' => 'Float', // Use 'float' instead of 'number'
     ];
     /**
      * Relationship: Cart belongs to a User

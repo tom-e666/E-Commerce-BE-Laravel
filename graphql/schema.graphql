@@ -37,10 +37,86 @@ type Mutation {
   invalidateToken(jwt:String!):UserLogResponse! @field(resolver: "AuthResolver@invalidateToken")
 }
 type output{message:String}
+type CartItem{
+  product_id:String
+  quantity:Int
+  price:Float
+  total:Float
+}
+type PaymentInfo{
+  payment_method:String
+  payment_status:String 
+  transaction_id:String 
+}
+type PaymentResponse{
+  code: Int
+  message: String
+  payment: PaymentInfo
+}
+type CartItemResponse{
+  items: [CartItem]
+}
+type ProductItem{
+  name:String
+  description:String
+  price:Float
+  stock:Int
+  status:String
+}
+type ProductsItemResponse{
+  code: Int
+  message: String
+  products: [ProductItem]
+}
+type ProductItemResponse{
+  code: Int
+  message: String
+  products: ProductItem
+}
+type Shipping{
+  tracking_code: String
+  carrier: String
+  estimated_date: String
+  status: String
+}
+type ShippingResponse{
+  code:Int
+  message:String
+  shipping: [Shipping]
+}
+type SupportTicket{
+  subject: String
+  message: String
+  status: String
+}
+type SupportTicketMessage{
+  subject: String
+  message: String
+}
+type SupportTicketResponse{
+  code:Int
+  message:String
+  supportTicket: SupportTicket
+}
+type SupportTicketsResponse {
+  code: Int
+  message: String
+  supportTickets: [SupportTicket] # Đổi từ `supportTicket` -> `supportTickets`
+}
+
 type Query{
     getUserInfo(jwt:String):UserQueryResponse @field(resolver: "AuthResolver@getUserInfo")
     check(message:String): output @field(resolver: "AuthResolver@check")
     getTokenState(jwt:String):UserLogResponse! @field(resolver: "AuthResolver@getTokenState")
     checkConnection:UserQueryResponse @field(resolver: "AuthResolver@checkConnection")
+    getCartItems(userId:String):CartItemResponse @field(resolver: "CartItemResolver@getCartItems")
+    getPayment(order_id:String):PaymentResponse @field(resolver:"PaymentResolver@getPayment")
+    getProduct(id:String):ProductItemResponse @field(resolver:"ProductResolver@getProduct")
+    getProducts(status:String):ProductsItemResponse @field(resolver:"ProductResolver@getProducts")
+    getShipping(order_id:String):ShippingResponse @field(resolver:"ShippingResolver@getShipping")
+    getSupportTicket(id:String):SupportTicketResponse @field(resolver:"SupportTicketResolver@getSupportTicket")
+    getSupportTickets(user_id: String, created_after: String, created_before: String, status: String): SupportTicketsResponse @field(resolver:"SupportTicketResolver@getSupportTickets")
+    getSupportTicketResponses(ticket_id:String):SupportTicketResponse @field(resolver:"SupportTicketResolver@getSupportTicketResponses")
+
 }
 #end login feature
