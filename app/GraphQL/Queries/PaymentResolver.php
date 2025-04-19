@@ -1,6 +1,6 @@
-<?php declare(strict_types=1);
-
+<?php 
 namespace App\GraphQL\Queries;
+use App\GraphQL\Queries\PaymentResolver;
 
 final readonly class PaymentResolver
 {
@@ -11,25 +11,30 @@ final readonly class PaymentResolver
     }
     public function getPayment($_, array $args)
     {
-        if(!isset($args['order_id'])){
+        $orderId = $args['order_id'] ?? null;
+        if (!$orderId) {
             return [
                 'code' => 400,
-                'message' => 'user_id is required',
+                'message' => 'Order ID is required',
                 'payment' => null,
             ];
         }
-        $payment = Payment::where('order_id', $args['order_id'])->first();
-        if ($payment === null) {
+
+        $payment = Payment::where('order_id', $orderId)->limit(1)->first();
+
+        if (!$payment) {
             return [
-                'code' => 404,
-                'message' => 'Payment not found',
-                'payment' => null,
+            'code' => 404,
+            'message' => 'Payment not found',
+            'payment' => null,
             ];
         }
+
         return [
             'code' => 200,
-            'message' => 'success',
+            'message' => 'Payment found',
             'payment' => $payment,
         ];
+
     }
 }

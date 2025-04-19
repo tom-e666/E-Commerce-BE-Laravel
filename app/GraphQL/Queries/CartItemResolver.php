@@ -2,7 +2,7 @@
 
 namespace App\GraphQL\Queries;
 
-final readonly class CartResolver
+final readonly class CartItemResolver
 {
     /** @param  array{}  $args */
     public function __invoke(null $_, array $args)
