@@ -35,7 +35,7 @@ final readonly class BrandResolver
                 'brand' => $brand,
             ], 'success', 200);
         } catch (Exception $e) {
-            return $this->error($e->getMessage(), 400);
+            return $this->error($e->getMessage(), 500);
         }
     }
 }
