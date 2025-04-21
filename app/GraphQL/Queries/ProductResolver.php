@@ -2,9 +2,14 @@
 
 namespace App\GraphQL\Queries;
 use App\Models\Product;
+use App\Models\ProductDetail;
+use App\GraphQL\Traits\GraphQLResponse;
 
 final readonly class ProductResolver
 {
+
+    use GraphQLResponse;
+
     /** @param  array{}  $args */
     public function __invoke(null $_, array $args)
     {
@@ -14,47 +19,36 @@ final readonly class ProductResolver
     public function getProducts($_, array $args): array
     {
         $products = Product::where('status', true)->get();
-        $products->load('details');
-        return [
-            'code'=> 200,
-            'message'=> 'success',
+        return $this->success([
             'products'=> $products->toArray(),
-        ];
+        ], 'Success', 200);
     }
     public function getProduct($_, array $args): array
     {
         if(!isset($args['id']))
         {
-            return [
-                'code'=> 400,
-                'message'=> 'id is required',
-                'product'=> null,
-            ];
+            return $this->error('id is required', 400);
         }
         $product = Product::find($args['id']);
         if($product===null)
         {
-            return [
-                'code'=> 404,
-                'message'=> 'product not found',
-                'product'=> null,
-            ];
+            return $this->error('Product not found', 404);
         }
         if($product->status===false)
         {
-            return [
-                'code'=> 404,
-                'message'=> 'product not available',
-                'product'=> null,
-            ];
+            return $this->error('Product not available', 404);
         }
 
-        return [
-            'code'=> 200,
-            'message'=> 'success',
-            'product'=> $product->load('details')->toArray(),
-            'reviews'=> $product->details->recentReviews(),
-        ];
+        $productDetail = ProductDetail::where('product_id', $product->id)->first();
+        if($productDetail===null)
+        {
+            return $this->error('Product details not found', 404);
+        }
+
+        return $this->success([
+            'product'=> array_merge($product->toArray(),['details'=>$productDetail->toArray()]),
+            // 'reviews'=> $product->details->recentReviews(),
+        ], 'Success', 200);
     }
     
 }

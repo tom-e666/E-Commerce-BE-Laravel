@@ -54,16 +54,18 @@ type PaymentResponse{
 type CartItemResponse{
   items: [CartItem]
 }
+
+#Product feature
 type ProductItem{
   name:String!
   price:Float!
   stock:Int!
-  status:String!
+  status:Boolean!
   brand_id:Int!
-  details: [Specification!]!
+  details: ProductDetails!
 }
 type ProductDetails{
-  description:String
+  description:String!
   specifications:[Specification!]!
   images:[String!]!
   keywords:[String!]!
@@ -72,17 +74,28 @@ type Specification{
   name:String!
   value:String!
 }
-type ProductsItemResponse{
-  code: Int
-  message: String
+input ProductDetailsInput{
+  description:String!
+  specifications:[SpecificationInput!]!
+  images:[String!]!
+  keywords:[String!]!
+}
+input SpecificationInput{
+  name:String!
+  value:String!
+}
+type ProductItemsResponse implements BaseResponse {
+  code: Int!
+  message: String!
   products: [ProductItem]
 }
-type ProductItemResponse{
-  code: Int
-  message: String
-  products: ProductItem
+type ProductItemResponse implements BaseResponse {
+  code: Int!
+  message: String!
+  product: ProductItem
 }
 
+# Brand feature
 type Brand{
   name:String
 }
@@ -137,8 +150,8 @@ type Query{
     checkConnection:UserQueryResponse @field(resolver: "AuthResolver@checkConnection")
     getCartItems(userId:String):CartItemResponse @field(resolver: "CartItemResolver@getCartItems")
     getPayment(order_id:String):PaymentResponse @field(resolver:"PaymentResolver@getPayment")
-    getProduct(id:String):ProductItemResponse @field(resolver:"ProductResolver@getProduct")
-    getProducts(status:String):ProductsItemResponse @field(resolver:"ProductResolver@getProducts")
+    getProduct(id:String!):ProductItemResponse @field(resolver:"ProductResolver@getProduct")
+    getProducts(status:String):ProductItemsResponse @field(resolver:"ProductResolver@getProducts")
     getShipping(order_id:String):ShippingResponse @field(resolver:"ShippingResolver@getShipping")
     getSupportTicket(id:String):SupportTicketResponse @field(resolver:"SupportTicketResolver@getSupportTicket")
     getSupportTickets(user_id: String, created_after: String, created_before: String, status: String): SupportTicketsResponse @field(resolver:"SupportTicketResolver@getSupportTickets")
@@ -155,7 +168,14 @@ type Mutation {
   refreshToken(jwt:String!):UserLogResponse!@field(resolver: "AuthResolver@refreshToken")
   invalidateToken(jwt:String!):UserLogResponse! @field(resolver: "AuthResolver@invalidateToken")
   createBrand(name:String!):BrandResponse @field(resolver:"BrandResolver@createBrand")
-
+  createProduct(
+    name:String!
+    price:Float!
+    stock:Int!
+    status:Boolean!
+    brand_id:Int!
+    details: ProductDetailsInput!
+  ): ProductItemResponse @field(resolver:"ProductResolver@createProduct")
 }
 type output{message:String}
 #end login feature

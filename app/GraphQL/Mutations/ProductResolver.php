@@ -3,10 +3,15 @@
 namespace App\GraphQL\Mutations;
 
 use App\Models\Product;
+use App\Models\ProductDetail;
 use Illuminate\Support\Facades\Validator;
+use App\GraphQL\Traits\GraphQLResponse;
 
 final readonly class ProductResolver
 {
+
+    use GraphQLResponse;
+
     /** @param  array{}  $args */
     public function __invoke(null $_, array $args)
     {
@@ -18,40 +23,61 @@ final readonly class ProductResolver
         $validator = Validator::make($args, [
             'name' => 'required|string',
             'price' => 'required|numeric|min:0',
-            'description' => 'required|string',
             'stock' => 'required|numeric|min:0',
             'status' => 'required|boolean',
+            'brand_id' => 'exists:brands,id|nullable',
         ]);
 
         if ($validator->fails()) {
-            return [
-                'code' => 400,
-                'message' => $validator->errors()->first(),
-                'product' => null,
-            ];
+            return $this->error($validator->errors()->first(), 400);
         }
 
         try {
-            // Create the product
             $product = Product::create([
                 'name' => $args['name'],
                 'price' => $args['price'],
-                'description' => $args['description'],
                 'stock' => $args['stock'],
                 'status' => $args['status'],
+                'brand_id' => $args['brand_id'] ?? null,
+                'details' => 'required|object',
+                'details.*.description' => 'required|string',
+                'details.*.specifications' => 'required|array',
+                'details.*.images' => 'required|array',
+                'details.*.keywords' => 'required|array',
             ]);
 
-            return [
-                'code' => 200,
-                'message' => 'success',
+            \Log::info('Product created', [
                 'product' => $product,
-            ];
+            ]);
+        
+            if (!$product) {
+                return $this->error('Failed to create product', 500);
+            }
+        
+            $details = $args['details'] ?? null;
+            if ($details) {
+                $productDetail = ProductDetail::create([
+                    'product_id' => $product->id,
+                    'description' => $details['description'],
+                    'images' => $details['images'],
+                    'keywords' => $details['keywords'],
+                    'specifications' => $details['specifications'],
+                ]);
+        
+                if (!$productDetail) {
+                    $product->delete();
+                    return $this->error('Failed to create product details', 500);
+                }
+        
+                // $product['details'] = $productDetail;
+            }
+        
+            return $this->success([
+                'product' => $product,
+            ], 'Product created successfully', 200);
+        
         } catch (\Exception $e) {
-            return [
-                'code' => 500,
-                'message' => $e->getMessage(),
-                'product' => null,
-            ];
+            return $this->error('An error occurred: ' . $e->getMessage(), 500);
         }
     }
 
@@ -59,7 +85,7 @@ final readonly class ProductResolver
     {
         // Validate input
         $validator = Validator::make($args, [
-            'id' => 'required|exists:products,id', // Ensure the product exists
+            'id' => 'required|exists:products,id', // Ensure the product exists 
             'name' => 'string',
             'price' => 'numeric|min:0',
             'description' => 'string|nullable',
@@ -68,21 +94,13 @@ final readonly class ProductResolver
         ]);
 
         if ($validator->fails()) {
-            return [
-                'code' => 400,
-                'message' => $validator->errors()->first(),
-                'product' => null,
-            ];
+            return $this->error($validator->errors()->first(), 400);
         }
 
         // Find the product
         $product = Product::find($args['id']);
         if (!$product) {
-            return [
-                'code' => 404,
-                'message' => 'Product not found',
-                'product' => null,
-            ];
+            return $this->error('Product not found', 404);
         }
 
         try {
@@ -97,24 +115,18 @@ final readonly class ProductResolver
 
             $product->save();
 
-            return [
-                'code' => 200,
-                'message' => 'success',
+            return $this->success([
                 'product' => $product,
-            ];
+            ], 'success', 200);
         } catch (\Exception $e) {
-            return [
-                'code' => 500,
-                'message' => $e->getMessage(),
-                'product' => null,
-            ];
+            return $this->error($e->getMessage(), 500);
         }
     }
+
     public function updateProductDetail($_, array $args)
     {
         $validator=Validator::make($args,[
             'product_id'=>'required|exists:products,id',
-            'name'=>'string',
             'description'=>'string',
             'images'=>'array',
             'keywords'=>'array',
@@ -122,41 +134,30 @@ final readonly class ProductResolver
         ]);
         if($validator->fails)
         {
-            return [
-                'code'=>400,
-                'message'=>$validator->errors()->first(),
-                'product_detail'=>null,
-            ];
+            return $this->error($validator->errors()->first(), 400);
         }
+
         $productDetail=Productdetail::find($args['product_id']);
+
         if(!$productDetail)
         {
-            return [
-                'code'=>404,
-                'message'=>'Product detail not found',
-                'product_detail'=>null,
-            ];
+            return $this->error('Product detail not found', 404);
         }
         try {
             $productDetail->fill([
-                'name'=>$args['name']??$productDetail->name,
                 'description'=>$args['description']??$productDetail->description,
                 'images'=>$args['images']??$productDetail->images,
                 'keywords'=>$args['keywords']??$productDetail->keywords,
                 'specifications'=>$args['specifications']??$productDetail->specifications,
             ]);
+
             $productDetail->save();
-            return [
-                'code'=>200,
-                'message'=>'success',
-                'product_detail'=>$productDetail,
-            ];
+
+            return $this->success([
+                'product_detail' => $productDetail,
+            ], 'success', 200);
         } catch (\Exception $e) {
-            return [
-                'code'=>500,
-                'message'=>$e->getMessage(),
-                'product_detail'=>null,
-            ];
+            return $this->error($e->getMessage(), 500);
         }
     }
 }

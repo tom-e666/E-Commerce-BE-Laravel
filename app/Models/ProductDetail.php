@@ -16,9 +16,10 @@ class ProductDetail extends Model
         'specifications',
     ];
     protected $casts = [
+        'description' => 'string',
+        'images' => 'array',
+        'keywords' => 'array',
         'specifications' => 'array',
-        'images' => 'string',
-        'keywords' => 'string'
     ];
     public function product()
     {
