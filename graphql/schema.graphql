@@ -7,6 +7,12 @@ input UserLogInput
   phone:String
   password:String!
 }
+
+interface BaseResponse {
+  code: Int!
+  message: String!
+}
+
 type UserLogResponse
 {
   code:String!
@@ -29,14 +35,6 @@ type UserQueryResponse
   user:UserCredential
 }
 
-type Mutation {
-  signup(user: UserLogInput!):UserLogResponse! @field(resolver: "AuthResolver@signup")
-  login(user:UserLogInput!):UserLogResponse!@field(resolver: "AuthResolver@login")
-  logout(jwt:String!):Boolean!@field(resolver: "AuthResolver@logout")
-  refreshToken(jwt:String!):UserLogResponse!@field(resolver: "AuthResolver@refreshToken")
-  invalidateToken(jwt:String!):UserLogResponse! @field(resolver: "AuthResolver@invalidateToken")
-}
-type output{message:String}
 type CartItem{
   product_id:String
   quantity:Int
@@ -57,11 +55,22 @@ type CartItemResponse{
   items: [CartItem]
 }
 type ProductItem{
-  name:String
+  name:String!
+  price:Float!
+  stock:Int!
+  status:String!
+  brand_id:Int!
+  details: [Specification!]!
+}
+type ProductDetails{
   description:String
-  price:Float
-  stock:Int
-  status:String
+  specifications:[Specification!]!
+  images:[String!]!
+  keywords:[String!]!
+}
+type Specification{
+  name:String!
+  value:String!
 }
 type ProductsItemResponse{
   code: Int
@@ -73,6 +82,21 @@ type ProductItemResponse{
   message: String
   products: ProductItem
 }
+
+type Brand{
+  name:String
+}
+type BrandResponse implements BaseResponse {
+  code: Int!
+  message: String!
+  brand: Brand
+}
+type BrandsResponse implements BaseResponse {
+  code: Int!
+  message: String!
+  brands: [Brand]
+}
+
 type Shipping{
   tracking_code: String
   carrier: String
@@ -104,6 +128,8 @@ type SupportTicketsResponse {
   supportTickets: [SupportTicket] # Đổi từ `supportTicket` -> `supportTickets`
 }
 
+# input
+
 type Query{
     getUserInfo(jwt:String):UserQueryResponse @field(resolver: "AuthResolver@getUserInfo")
     check(message:String): output @field(resolver: "AuthResolver@check")
@@ -117,6 +143,19 @@ type Query{
     getSupportTicket(id:String):SupportTicketResponse @field(resolver:"SupportTicketResolver@getSupportTicket")
     getSupportTickets(user_id: String, created_after: String, created_before: String, status: String): SupportTicketsResponse @field(resolver:"SupportTicketResolver@getSupportTickets")
     getSupportTicketResponses(ticket_id:String):SupportTicketResponse @field(resolver:"SupportTicketResolver@getSupportTicketResponses")
+    getBrands: BrandsResponse @field(resolver:"BrandResolver@getBrands")
+    getBrand(id:String!):BrandResponse @field(resolver:"BrandResolver@getBrand")
 
 }
+
+type Mutation {
+  signup(user: UserLogInput!):UserLogResponse! @field(resolver: "AuthResolver@signup")
+  login(user:UserLogInput!):UserLogResponse!@field(resolver: "AuthResolver@login")
+  logout(jwt:String!):Boolean!@field(resolver: "AuthResolver@logout")
+  refreshToken(jwt:String!):UserLogResponse!@field(resolver: "AuthResolver@refreshToken")
+  invalidateToken(jwt:String!):UserLogResponse! @field(resolver: "AuthResolver@invalidateToken")
+  createBrand(name:String!):BrandResponse @field(resolver:"BrandResolver@createBrand")
+
+}
+type output{message:String}
 #end login feature

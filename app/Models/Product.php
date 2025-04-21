@@ -10,10 +10,10 @@ class Product extends Model
     use Hasfactory;
     protected $fillable =[
         'name',
-        'description',
         'price',
         'stock',
         'status',
+        'brand_id',
     ];
     protected $casts = [
         'price' => 'Float',
@@ -23,5 +23,9 @@ class Product extends Model
     public function details()
     {
         return $this->hasOne(ProductDetail::class, 'product_id', 'id');
+    }
+    public function brand()
+    {
+        return $this->belongsTo(Brand::class, 'brand_id', 'id');
     }
 }
