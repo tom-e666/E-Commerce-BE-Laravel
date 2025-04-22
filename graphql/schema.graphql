@@ -7,6 +7,12 @@ input UserLogInput
   phone:String
   password:String!
 }
+
+interface BaseResponse {
+  code: Int!
+  message: String!
+}
+
 type UserLogResponse
 {
   code:String!
@@ -29,14 +35,6 @@ type UserQueryResponse
   user:UserCredential
 }
 
-type Mutation {
-  signup(user: UserLogInput!):UserLogResponse! @field(resolver: "AuthResolver@signup")
-  login(user:UserLogInput!):UserLogResponse!@field(resolver: "AuthResolver@login")
-  logout(jwt:String!):Boolean!@field(resolver: "AuthResolver@logout")
-  refreshToken(jwt:String!):UserLogResponse!@field(resolver: "AuthResolver@refreshToken")
-  invalidateToken(jwt:String!):UserLogResponse! @field(resolver: "AuthResolver@invalidateToken")
-}
-type output{message:String}
 type CartItem{
   product_id:String
   quantity:Int
@@ -56,23 +54,62 @@ type PaymentResponse{
 type CartItemResponse{
   items: [CartItem]
 }
+
+#Product feature
 type ProductItem{
-  name:String
-  description:String
-  price:Float
-  stock:Int
-  status:String
+  name:String!
+  price:Float!
+  stock:Int!
+  status:Boolean!
+  brand_id:Int!
+  details: ProductDetails!
 }
-type ProductsItemResponse{
-  code: Int
-  message: String
+type ProductDetails{
+  description:String!
+  specifications:[Specification!]!
+  images:[String!]!
+  keywords:[String!]!
+}
+type Specification{
+  name:String!
+  value:String!
+}
+input ProductDetailsInput{
+  description:String!
+  specifications:[SpecificationInput!]!
+  images:[String!]!
+  keywords:[String!]!
+}
+input SpecificationInput{
+  name:String!
+  value:String!
+}
+type ProductItemsResponse implements BaseResponse {
+  code: Int!
+  message: String!
   products: [ProductItem]
 }
-type ProductItemResponse{
-  code: Int
-  message: String
-  products: ProductItem
+type ProductItemResponse implements BaseResponse {
+  code: Int!
+  message: String!
+  product: ProductItem
 }
+
+# Brand feature
+type Brand{
+  name:String
+}
+type BrandResponse implements BaseResponse {
+  code: Int!
+  message: String!
+  brand: Brand
+}
+type BrandsResponse implements BaseResponse {
+  code: Int!
+  message: String!
+  brands: [Brand]
+}
+
 type Shipping{
   tracking_code: String
   carrier: String
@@ -104,6 +141,8 @@ type SupportTicketsResponse {
   supportTickets: [SupportTicket] # Đổi từ `supportTicket` -> `supportTickets`
 }
 
+# input
+
 type Query{
     getUserInfo(jwt:String):UserQueryResponse @field(resolver: "AuthResolver@getUserInfo")
     check(message:String): output @field(resolver: "AuthResolver@check")
@@ -111,12 +150,32 @@ type Query{
     checkConnection:UserQueryResponse @field(resolver: "AuthResolver@checkConnection")
     getCartItems(userId:String):CartItemResponse @field(resolver: "CartItemResolver@getCartItems")
     getPayment(order_id:String):PaymentResponse @field(resolver:"PaymentResolver@getPayment")
-    getProduct(id:String):ProductItemResponse @field(resolver:"ProductResolver@getProduct")
-    getProducts(status:String):ProductsItemResponse @field(resolver:"ProductResolver@getProducts")
+    getProduct(id:String!):ProductItemResponse @field(resolver:"ProductResolver@getProduct")
+    getProducts(status:String):ProductItemsResponse @field(resolver:"ProductResolver@getProducts")
     getShipping(order_id:String):ShippingResponse @field(resolver:"ShippingResolver@getShipping")
     getSupportTicket(id:String):SupportTicketResponse @field(resolver:"SupportTicketResolver@getSupportTicket")
     getSupportTickets(user_id: String, created_after: String, created_before: String, status: String): SupportTicketsResponse @field(resolver:"SupportTicketResolver@getSupportTickets")
     getSupportTicketResponses(ticket_id:String):SupportTicketResponse @field(resolver:"SupportTicketResolver@getSupportTicketResponses")
+    getBrands: BrandsResponse @field(resolver:"BrandResolver@getBrands")
+    getBrand(id:String!):BrandResponse @field(resolver:"BrandResolver@getBrand")
 
 }
+
+type Mutation {
+  signup(user: UserLogInput!):UserLogResponse! @field(resolver: "AuthResolver@signup")
+  login(user:UserLogInput!):UserLogResponse!@field(resolver: "AuthResolver@login")
+  logout(jwt:String!):Boolean!@field(resolver: "AuthResolver@logout")
+  refreshToken(jwt:String!):UserLogResponse!@field(resolver: "AuthResolver@refreshToken")
+  invalidateToken(jwt:String!):UserLogResponse! @field(resolver: "AuthResolver@invalidateToken")
+  createBrand(name:String!):BrandResponse @field(resolver:"BrandResolver@createBrand")
+  createProduct(
+    name:String!
+    price:Float!
+    stock:Int!
+    status:Boolean!
+    brand_id:Int!
+    details: ProductDetailsInput!
+  ): ProductItemResponse @field(resolver:"ProductResolver@createProduct")
+}
+type output{message:String}
 #end login feature
