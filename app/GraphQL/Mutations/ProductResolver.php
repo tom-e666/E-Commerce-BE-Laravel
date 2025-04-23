@@ -26,11 +26,11 @@ final readonly class ProductResolver
             'stock' => 'required|numeric|min:0',
             'status' => 'required|boolean',
             'brand_id' => 'exists:brands,id|nullable',
-            'details' => 'required|object',
-            'details.description' => 'required|string',
-            'details.images' => 'required|array',
-            'details.keywords' => 'required|array',
-            'details.specifications' => 'required|array',
+            // 'details' => 'required|object',
+            // 'details.description' => 'required|string',
+            // 'details.images' => 'required|array',
+            // 'details.keywords' => 'required|array',
+            // 'details.specifications' => 'required|array',
         ]);
 
         if ($validator->fails()) {

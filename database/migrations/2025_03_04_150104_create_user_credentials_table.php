@@ -17,8 +17,10 @@ return new class extends Migration
             $table->string('password');
             $table->string('email');
             $table->string('phone');
-            $table->boolean('email_verified')->default(false);
-            $table->boolean('phone_verified')->default(false);
+            $table->string('full_name');
+            $table->string('role')->default('user'); // Default role is 'user'
+            // $table->boolean('email_verified')->default(false);
+            // $table->boolean('phone_verified')->default(false);
             $table->timestamps();
         });
     }

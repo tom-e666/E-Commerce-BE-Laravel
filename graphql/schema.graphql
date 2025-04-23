@@ -13,6 +13,11 @@ interface BaseResponse {
   message: String!
 }
 
+type Response implements BaseResponse {
+  code: Int!
+  message: String!
+}
+
 type UserLogResponse
 {
   code:String!
@@ -24,15 +29,20 @@ type UserCredential {
     username: String
     email: String
     phone: String
-    email_verified: Boolean
-    phone_verified: Boolean
-    created_at: String
+    # email_verified: Boolean
+    # phone_verified: Boolean
+    full_name: String
 }
 type UserQueryResponse 
 {
   code:String!
   message:String!
   user:UserCredential
+}
+type AuthPayload{
+  access_token:String!
+  refresh_token:String!
+  expires_at:Int!
 }
 
 type CartItem{
@@ -162,10 +172,23 @@ type Query{
 }
 
 type Mutation {
-  signup(user: UserLogInput!):UserLogResponse! @field(resolver: "AuthResolver@signup")
-  login(user:UserLogInput!):UserLogResponse!@field(resolver: "AuthResolver@login")
-  logout(jwt:String!):Boolean!@field(resolver: "AuthResolver@logout")
-  refreshToken(jwt:String!):UserLogResponse!@field(resolver: "AuthResolver@refreshToken")
+  # signup(user: UserLogInput!):UserLogResponse! @field(resolver: "AuthResolver@signup")
+  signup(
+    username:String!
+    email:String!
+    phone:String!
+    password:String!
+    full_name:String!
+    ):UserQueryResponse! @field(resolver: "AuthResolver@signup")
+  # login(user:UserLogInput!):UserLogResponse!@field(resolver: "AuthResolver@login")
+  login(
+    email:String!,
+    password:String!
+  ):AuthPayload! @field(resolver: "AuthResolver@login")
+  # logout(jwt:String!):Boolean!@field(resolver: "AuthResolver@logout")
+  logout(refresh_token: String!):Response! @field(resolver: "AuthResolver@logout")
+  # refreshToken(jwt:String!):UserLogResponse!@field(resolver: "AuthResolver@refreshToken")
+  refreshToken(refresh_token:String!):AuthPayload! @field(resolver: "AuthResolver@refreshToken")
   invalidateToken(jwt:String!):UserLogResponse! @field(resolver: "AuthResolver@invalidateToken")
   createBrand(name:String!):BrandResponse @field(resolver:"BrandResolver@createBrand")
   createProduct(

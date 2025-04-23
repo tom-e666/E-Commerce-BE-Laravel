@@ -9,7 +9,7 @@ trait GraphQLResponse
         return array_merge([
             'code' => $code,
             'message' => $message,
-        ], $data);
+        ], $data ?? []);
     }
 
     public function error(string $message = 'Error', int $code = 400): array
