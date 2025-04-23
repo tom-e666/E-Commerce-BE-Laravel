@@ -42,7 +42,7 @@ class ProductController extends Controller
         $rating = $request->input('rating');
 
         $query = Product::with(['brand:id,name', 'details'])
-            ->where('status', 'active');
+            ->where('status', 1);
 
         // Tìm kiếm theo tên và mô tả
         if ($search) {
@@ -103,8 +103,16 @@ class ProductController extends Controller
     public function show($id)
     {
         $product = Product::with(['brand:id,name', 'details', 'reviews.user:id,name'])
-            ->where('status', 'active')
-            ->findOrFail($id);
+            ->where('status', 1)
+            ->where('_id', $id)
+            ->first();
+
+        if (!$product) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Product not found'
+            ], 404);
+        }
 
         return response()->json([
             'status' => 'success',
