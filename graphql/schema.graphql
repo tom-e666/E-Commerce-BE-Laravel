@@ -176,6 +176,15 @@ type Mutation {
     brand_id:Int!
     details: ProductDetailsInput!
   ): ProductItemResponse @field(resolver:"ProductResolver@createProduct")
+  updateProduct(
+    id:String!
+    name:String
+    price:Float
+    stock:Int
+    status:Boolean
+    brand_id:Int
+    details: ProductDetailsInput
+  ): ProductItemResponse @field(resolver:"ProductResolver@updateProduct")
 }
 type output{message:String}
 #end login feature
