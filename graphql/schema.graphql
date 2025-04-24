@@ -1,4 +1,3 @@
-
 #start login feature
 input UserLogInput
 {
@@ -72,7 +71,7 @@ type ProductItem{
   stock:Int!
   status:Boolean!
   brand_id:Int!
-  details: ProductDetails!
+  details: ProductDetails
 }
 type ProductDetails{
   description:String!
@@ -162,13 +161,24 @@ type Query{
     getPayment(order_id:String):PaymentResponse @field(resolver:"PaymentResolver@getPayment")
     getProduct(id:String!):ProductItemResponse @field(resolver:"ProductResolver@getProduct")
     getProducts(status:String):ProductItemsResponse @field(resolver:"ProductResolver@getProducts")
+    getPaginatedProducts(
+        brand_id: ID
+        category_id: ID
+        min_price: Float
+        max_price: Float
+        status: String
+        search: String
+        sort_by: String
+        sort_order: String
+        page: Int
+        per_page: Int
+    ): ProductItemsResponse @field(resolver:"ProductResolver@getPaginatedProducts")
     getShipping(order_id:String):ShippingResponse @field(resolver:"ShippingResolver@getShipping")
     getSupportTicket(id:String):SupportTicketResponse @field(resolver:"SupportTicketResolver@getSupportTicket")
     getSupportTickets(user_id: String, created_after: String, created_before: String, status: String): SupportTicketsResponse @field(resolver:"SupportTicketResolver@getSupportTickets")
     getSupportTicketResponses(ticket_id:String):SupportTicketResponse @field(resolver:"SupportTicketResolver@getSupportTicketResponses")
     getBrands: BrandsResponse @field(resolver:"BrandResolver@getBrands")
     getBrand(id:String!):BrandResponse @field(resolver:"BrandResolver@getBrand")
-
 }
 
 type Mutation {
