@@ -150,6 +150,35 @@ type SupportTicketsResponse {
   supportTickets: [SupportTicket] # Đổi từ `supportTicket` -> `supportTickets`
 }
 
+# Review feature
+type Review {
+    id: ID!
+    product_id: String!
+    user_id: String!
+    rating: Int!
+    comment: String
+    created_at: String
+    updated_at: String
+}
+
+type ReviewResponse implements BaseResponse {
+    code: Int!
+    message: String!
+    review: Review
+}
+
+type ReviewsResponse implements BaseResponse {
+    code: Int!
+    message: String!
+    reviews: [Review]
+}
+
+input ReviewInput {
+    product_id: String!
+    rating: Int!
+    comment: String
+}
+
 # input
 
 type Query{
@@ -179,6 +208,8 @@ type Query{
     getSupportTicketResponses(ticket_id:String):SupportTicketResponse @field(resolver:"SupportTicketResolver@getSupportTicketResponses")
     getBrands: BrandsResponse @field(resolver:"BrandResolver@getBrands")
     getBrand(id:String!):BrandResponse @field(resolver:"BrandResolver@getBrand")
+    getReviews(product_id: String): ReviewsResponse @field(resolver: "ReviewQuery@getReviews")
+    getReview(id: String!): ReviewResponse @field(resolver: "ReviewQuery@getReview")
 }
 
 type Mutation {
@@ -218,6 +249,9 @@ type Mutation {
     brand_id:Int
     details: ProductDetailsInput
   ): ProductItemResponse @field(resolver:"ProductResolver@updateProduct")
+  createReview(input: ReviewInput!): ReviewResponse @field(resolver: "ReviewMutation@createReview")
+  updateReview(id: String!, input: ReviewInput!): ReviewResponse @field(resolver: "ReviewMutation@updateReview")
+  deleteReview(id: String!): Response @field(resolver: "ReviewMutation@deleteReview")
 }
 type output{message:String}
 #end login feature
