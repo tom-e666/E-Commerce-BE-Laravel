@@ -70,4 +70,9 @@ class UserCredential extends Authenticatable implements JWTSubject
     {
         return [];
     }
+
+    public function cartItems()
+    {
+        return $this->hasMany(CartItem::class, 'user_id', 'id');
+    }
 }

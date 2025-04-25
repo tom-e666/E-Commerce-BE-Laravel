@@ -184,13 +184,15 @@ final readonly class AuthResolver
             return $this->error('Invalid credentials', 401);
         }
 
-        $user = auth()->user();
+        $user = auth('api')->user();
+
         $refreshToken = Str::random(60);
 
         // Check if the user already has a refresh token
         $existingToken = DB::table('refresh_tokens')
             ->where('user_id', $user->id)
             ->first();
+
         if ($existingToken) {
             // Update the existing refresh token
             DB::table('refresh_tokens')
