@@ -42,6 +42,7 @@ return [
             // Nuwave\Lighthouse\Http\Middleware\LogGraphQLQueries::class,
 
             // 'check.blacklist',
+            // Define Middleware
             App\Http\Middleware\CheckBlacklistToken::class,
         ],
 

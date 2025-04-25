@@ -45,10 +45,8 @@ type AuthPayload{
 }
 
 type CartItem{
-  product_id:String
-  quantity:Int
-  price:Float
-  total:Float
+  product_id:ID!
+  quantity:Int!
 }
 type PaymentInfo{
   payment_method:String
@@ -60,7 +58,15 @@ type PaymentResponse{
   message: String
   payment: PaymentInfo
 }
-type CartItemResponse{
+type CartItemResponse implements BaseResponse {
+  code: Int!
+  message: String!
+  item: CartItem
+}
+
+type CartItemsResponse implements BaseResponse {
+  code: Int!
+  message: String!
   items: [CartItem]
 }
 
@@ -210,6 +216,7 @@ type Query{
     getBrand(id:String!):BrandResponse @field(resolver:"BrandResolver@getBrand")
     getReviews(product_id: String): ReviewsResponse @field(resolver: "ReviewQuery@getReviews")
     getReview(id: String!): ReviewResponse @field(resolver: "ReviewQuery@getReview")
+    getCartItems:CartItemsResponse @field(resolver:"CartItemResolver@getCartItems")
 }
 
 type Mutation {
@@ -252,6 +259,13 @@ type Mutation {
   createReview(input: ReviewInput!): ReviewResponse @field(resolver: "ReviewMutation@createReview")
   updateReview(id: String!, input: ReviewInput!): ReviewResponse @field(resolver: "ReviewMutation@updateReview")
   deleteReview(id: String!): Response @field(resolver: "ReviewMutation@deleteReview")
+  addCartItem(
+    product_id:ID!
+    quantity:Int!
+  ):CartItemResponse @field(resolver:"CartItemResolver@updateCart")
+  removeCartItem(
+    product_id:ID!
+  ):Response @field(resolver:"CartItemResolver@deleteItem")
 }
 type output{message:String}
 #end login feature

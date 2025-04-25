@@ -2,8 +2,16 @@
 
 namespace App\GraphQL\Mutations;
 
-final readonly class CartResolver
+use App\Models\CartItem;
+use Illuminate\Support\Facades\Validator;
+use App\GraphQL\Traits\GraphQLResponse;
+use App\Services\AuthService;
+
+final readonly class CartItemResolver
 {
+
+    use GraphQLResponse;
+
     /** @param  array{}  $args */
     public function __invoke(null $_, array $args)
     {
@@ -12,33 +20,57 @@ final readonly class CartResolver
     public function updateCart($_, array $args)
     {
         $validator=Validator::make($args,[
-            'user_id'=>'required|string|exists:usersCredentials,user_id,',
+            // 'user_id'=>'required|string|exists:user_credentials,user_id',
             'product_id'=>'required|string|exists:products,id',
-            'quantity'=>'required|number',
+            'quantity'=>'required|numeric',
         ]);
         if($validator->fails()){
-            return [
-                'code' => 400,
-                'message' => $validator->errors()->first(),
-                'cartItem' => null,
-            ];
-        }
-        
-        $cartItem = CartItem::where('user_id', $args['user_id']).where('product_id',$args['product_id'])->first();
-        if ($cartItem === null) {
-            return [
-                'code' => 404,
-                'message' => 'CartItem not found',
-                'cartItem' => null,
-            ];
+            return $this->error($validator->errors()->first(), 400);
         }
 
-        $cartItem->quantity = $args['quantity'];
+        $user = AuthService::Auth();
+        if(!$user){
+            return $this->error('Unauthorized', 401);
+        } 
         
-        return [
-            'code' => 200,
-            'message' => 'success',
-            'cartItem' => $cartItem,
-        ];
+        // $cartItem = CartItem::where('user_id', $args['user_id']).where('product_id',$args['product_id'])->first();
+        $cartItem = CartItem::where('user_id', $user->id)->where('product_id',$args['product_id'])->first();
+        if ($cartItem) {
+            $cartItem->quantity += $args['quantity'];
+            $cartItem->save();
+        }else{
+            $cartItem = CartItem::create([
+                'user_id' => $user->id,
+                'product_id' => $args['product_id'],
+                'quantity' => $args['quantity'],
+            ]);
+        }
+
+        return $this->success(['item' => $cartItem, ], 'CartItem updated successfully', 200);
+    }
+
+    public function deleteItem($_, array $args)
+    {
+        $validator=Validator::make($args,[
+            // 'user_id'=>'required|string|exists:usersCredentials,user_id',
+            'product_id'=>'required|string|exists:products,id',
+        ]);
+        if($validator->fails()){
+            return $this->error($validator->errors()->first(), 400);
+        }
+
+        $user = AuthService::Auth();
+        if(!$user){
+            return $this->error('Unauthorized', 401);
+        } 
+        
+        $cartItem = CartItem::where('user_id', $user->id)->where('product_id',$args['product_id'])->first();
+        if (!$cartItem) {
+            return $this->error('CartItem not found', 404);
+        }
+        
+        $cartItem->delete();
+
+        return $this->success(null, 'CartItem deleted successfully', 200);
     }
 }
