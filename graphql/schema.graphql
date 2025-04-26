@@ -17,6 +17,7 @@ type Response implements BaseResponse {
   message: String!
 }
 
+# User feature
 type UserLogResponse
 {
   code:String!
@@ -32,9 +33,8 @@ type UserCredential {
     # phone_verified: Boolean
     full_name: String
 }
-type UserQueryResponse 
-{
-  code:String!
+type UserResponse implements BaseResponse{
+  code:Int!
   message:String!
   user:UserCredential
 }
@@ -44,6 +44,7 @@ type AuthPayload{
   expires_at:Int!
 }
 
+# Cart feature
 type CartItem{
   product_id:ID!
   quantity:Int!
@@ -70,7 +71,7 @@ type CartItemsResponse implements BaseResponse {
   items: [CartItem]
 }
 
-#Product feature
+# Product feature
 type ProductItem{
   name:String!
   price:Float!
@@ -188,11 +189,11 @@ input ReviewInput {
 # input
 
 type Query{
-    getUserInfo(jwt:String):UserQueryResponse @field(resolver: "AuthResolver@getUserInfo")
-    check(message:String): output @field(resolver: "AuthResolver@check")
-    getTokenState(jwt:String):UserLogResponse! @field(resolver: "AuthResolver@getTokenState")
-    checkConnection:UserQueryResponse @field(resolver: "AuthResolver@checkConnection")
-    getCartItems(userId:String):CartItemResponse @field(resolver: "CartItemResolver@getCartItems")
+    # getUserInfo(jwt:String):UserQueryResponse @field(resolver: "AuthResolver@getUserInfo")
+    # check(message:String): output @field(resolver: "AuthResolver@check")
+    # getTokenState(jwt:String):UserLogResponse! @field(resolver: "AuthResolver@getTokenState")
+    # checkConnection:UserQueryResponse @field(resolver: "AuthResolver@checkConnection")
+    # getCartItems(userId:String):CartItemResponse @field(resolver: "CartItemResolver@getCartItems")
     getPayment(order_id:String):PaymentResponse @field(resolver:"PaymentResolver@getPayment")
     getProduct(id:String!):ProductItemResponse @field(resolver:"ProductResolver@getProduct")
     getProducts(status:String):ProductItemsResponse @field(resolver:"ProductResolver@getProducts")
@@ -217,6 +218,7 @@ type Query{
     getReviews(product_id: String): ReviewsResponse @field(resolver: "ReviewQuery@getReviews")
     getReview(id: String!): ReviewResponse @field(resolver: "ReviewQuery@getReview")
     getCartItems:CartItemsResponse @field(resolver:"CartItemResolver@getCartItems")
+    getUserInfo:UserResponse @field(resolver:"UserCredentialResolver@getUserCredential")
 }
 
 type Mutation {
@@ -227,7 +229,7 @@ type Mutation {
     phone:String!
     password:String!
     full_name:String!
-    ):UserQueryResponse! @field(resolver: "AuthResolver@signup")
+    ):UserResponse! @field(resolver: "AuthResolver@signup")
   # login(user:UserLogInput!):UserLogResponse!@field(resolver: "AuthResolver@login")
   login(
     email:String!,
@@ -237,7 +239,7 @@ type Mutation {
   logout(refresh_token: String!):Response! @field(resolver: "AuthResolver@logout")
   # refreshToken(jwt:String!):UserLogResponse!@field(resolver: "AuthResolver@refreshToken")
   refreshToken(refresh_token:String!):AuthPayload! @field(resolver: "AuthResolver@refreshToken")
-  invalidateToken(jwt:String!):UserLogResponse! @field(resolver: "AuthResolver@invalidateToken")
+  # invalidateToken(jwt:String!):UserLogResponse! @field(resolver: "AuthResolver@invalidateToken")
   createBrand(name:String!):BrandResponse @field(resolver:"BrandResolver@createBrand")
   createProduct(
     name:String!
@@ -266,6 +268,16 @@ type Mutation {
   removeCartItem(
     product_id:ID!
   ):Response @field(resolver:"CartItemResolver@deleteItem")
+  updateUserInfo(
+    username:String
+    email:String
+    phone:String
+    full_name:String
+  ):UserResponse @field(resolver:"UserCredentialResolver@updateUserInfo")
+  changePassword(
+    old_password:String!
+    new_password:String!
+  ):Response @field(resolver:"UserCredentialResolver@changePassword")
 }
 type output{message:String}
 #end login feature

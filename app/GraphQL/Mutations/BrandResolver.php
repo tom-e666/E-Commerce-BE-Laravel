@@ -11,7 +11,6 @@ final readonly class BrandResolver
 {
 
     use GraphQLResponse;
-    // use AuthService;
 
     /** @param  array{}  $args */
     public function __invoke(null $_, array $args)
