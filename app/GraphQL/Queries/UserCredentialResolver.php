@@ -18,13 +18,23 @@ final readonly class UserCredentialResolver{
     public function getUserCredential($_, array $args): array
     {
         $user = AuthService::Auth();
-        if(!$user){
+        if (!$user) {
             return $this->error('Unauthorized', 401);
         }
-
-        $userCredential = UserCredential::where('id', $user->id)->first();
-        return $this->success([
-            'user' => $userCredential,
-        ], 'success', 200);
+        
+        try {
+            $userCredential = UserCredential::where('id', $user->id)->first();
+    
+            if (!$userCredential) {
+                return $this->error('User not found', 404);
+            }
+    
+            return $this->success([
+                'user' => $userCredential,
+            ], 'success', 200);
+    
+        } catch (\Exception $e) {
+            return $this->error('An error occurred: ' . $e->getMessage(), 500);
+        }
     }
 }

@@ -33,20 +33,24 @@ final readonly class CartItemResolver
             return $this->error('Unauthorized', 401);
         } 
         
-        // $cartItem = CartItem::where('user_id', $args['user_id']).where('product_id',$args['product_id'])->first();
-        $cartItem = CartItem::where('user_id', $user->id)->where('product_id',$args['product_id'])->first();
-        if ($cartItem) {
-            $cartItem->quantity += $args['quantity'];
-            $cartItem->save();
-        }else{
-            $cartItem = CartItem::create([
-                'user_id' => $user->id,
-                'product_id' => $args['product_id'],
-                'quantity' => $args['quantity'],
-            ]);
+        try{
+            // $cartItem = CartItem::where('user_id', $args['user_id']).where('product_id',$args['product_id'])->first();
+            $cartItem = CartItem::where('user_id', $user->id)->where('product_id',$args['product_id'])->first();
+            if ($cartItem) {
+                $cartItem->quantity += $args['quantity'];
+                $cartItem->save();
+            }else{
+                $cartItem = CartItem::create([
+                    'user_id' => $user->id,
+                    'product_id' => $args['product_id'],
+                    'quantity' => $args['quantity'],
+                ]);
+            }
+            
+            return $this->success(['item' => $cartItem, ], 'CartItem updated successfully', 200);
+        }catch(\Exception $e){
+            return $this->error('An error occurred: ' . $e->getMessage(), 500);
         }
-
-        return $this->success(['item' => $cartItem, ], 'CartItem updated successfully', 200);
     }
 
     public function deleteItem($_, array $args)
@@ -64,13 +68,17 @@ final readonly class CartItemResolver
             return $this->error('Unauthorized', 401);
         } 
         
-        $cartItem = CartItem::where('user_id', $user->id)->where('product_id',$args['product_id'])->first();
-        if (!$cartItem) {
-            return $this->error('CartItem not found', 404);
+        try{
+            $cartItem = CartItem::where('user_id', $user->id)->where('product_id',$args['product_id'])->first();
+            if (!$cartItem) {
+                return $this->error('CartItem not found', 404);
+            }
+            
+            $cartItem->delete();
+            
+            return $this->success(null, 'CartItem deleted successfully', 200);
+        }catch(\Exception $e){
+            return $this->error('An error occurred: ' . $e->getMessage(), 500);
         }
-        
-        $cartItem->delete();
-
-        return $this->success(null, 'CartItem deleted successfully', 200);
     }
 }
