@@ -4,6 +4,10 @@ namespace App\GraphQL\Queries;
 use App\Models\Product;
 use App\Models\ProductDetail;
 use App\GraphQL\Traits\GraphQLResponse;
+use App\Queries\ProductQuery;
+use Illuminate\Http\Request;
+use Nuwave\Lighthouse\Execution\ResolveInfo;
+use Nuwave\Lighthouse\Execution\HttpGraphQLContext;
 
 final readonly class ProductResolver
 {
@@ -50,5 +54,34 @@ final readonly class ProductResolver
             // 'reviews'=> $product->details->recentReviews(),
         ], 'Success', 200);
     }
-    
+
+    public function getPaginatedProducts($root, array $args, HttpGraphQLContext $context, ResolveInfo $resolveInfo)
+    {
+        $request = new Request($args);
+        $productQuery = new ProductQuery();
+        $products = $productQuery->paginate($request);
+
+        $formattedProducts = [];
+        foreach ($products as $product) {
+            $productDetail = $product->details;
+            $formattedProducts[] = [
+                'id' => $product->id,
+                'name' => $product->name,
+                'price' => $product->price,
+                'stock' => $product->stock,
+                'status' => $product->status,
+                'brand_id' => $product->brand_id,
+                'details' => $productDetail ? [
+                    'description' => $productDetail->description,
+                    'specifications' => $productDetail->specifications,
+                    'images' => $productDetail->images,
+                    'keywords' => $productDetail->keywords,
+                ] : null,
+            ];
+        }
+
+        return $this->success([
+            'products' => $formattedProducts,
+        ], 'Success', 200);
+    }
 }

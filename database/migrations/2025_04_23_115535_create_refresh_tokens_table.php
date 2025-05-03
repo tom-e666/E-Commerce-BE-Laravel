@@ -11,8 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('carts', function (Blueprint $table) {
+        Schema::create('refresh_tokens', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('user_id')->constrained('user_credentials')->onDelete('cascade');
+            // hashed token
+            // $table->string('token', 512)->unique();
+            $table->string('token')->unique();
+            $table->string('expires_at')->nullable();
             $table->timestamps();
         });
     }
@@ -22,6 +27,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('carts');
+        Schema::dropIfExists('refresh_tokens');
     }
 };

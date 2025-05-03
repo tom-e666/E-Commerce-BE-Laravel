@@ -40,6 +40,10 @@ return [
 
             // Logs every incoming GraphQL query.
             // Nuwave\Lighthouse\Http\Middleware\LogGraphQLQueries::class,
+
+            // 'check.blacklist',
+            // Define Middleware
+            App\Http\Middleware\CheckBlacklistToken::class,
         ],
 
         /*

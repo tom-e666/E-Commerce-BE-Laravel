@@ -24,6 +24,7 @@ final readonly class BrandResolver{
             'brands' => $brands,
         ], 'success', 200);
     }
+    
     public function getBrand($_, array $args): array
     {
         $brand = Brand::where('id', $args['id'])->first();

@@ -5,6 +5,7 @@ namespace App\GraphQL\Mutations;
 use App\Models\Brand;
 use Illuminate\Support\Facades\Validator;
 use App\GraphQL\Traits\GraphQLResponse;
+use App\Services\AuthService;
 
 final readonly class BrandResolver
 {
@@ -27,6 +28,13 @@ final readonly class BrandResolver
             return $this->error($validator->errors()->first(), 400);
         }
 
+        // $user = AuthService::Auth();
+        // if(!$user){
+        //     return $this->error('Unauthorized', 401);
+        // } else if(!AuthService::isAdmin()){
+        //     return $this->error('Forbidden', 403);
+        // }
+
         try {
             $brand = Brand::create([
                 'name' => $args['name'],
@@ -47,6 +55,13 @@ final readonly class BrandResolver
 
         if ($validator->fails()) {
             return $this->error($validator->errors()->first(), 400);
+        }
+
+        $user = AuthService::Auth();
+        if(!$user){
+            return $this->error('Unauthorized', 401);
+        } else if(!AuthService::isAdmin()){
+            return $this->error('Forbidden', 403);
         }
 
         try {

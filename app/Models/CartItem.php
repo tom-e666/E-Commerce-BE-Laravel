@@ -3,42 +3,36 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class CartItem extends Model
 {
-    // Use MongoDB connection
-    protected $connection = 'mongodb';
-    protected $collection = 'cart';
+    use HasFactory; 
+    
+    protected $table = 'cart_items';
 
     // Fillable fields
     protected $fillable = [
         'user_id',
         'product_id',
         'quantity',
-        'price',
-        'total'
     ];
+
     // Cast attributes
     protected $casts = [
-        'user_id' => 'String',
-        'product_id' => 'String',
-        'quantity' => 'Int',
-        'price' => 'Float',
-        'total' => 'Float', // Use 'float' instead of 'number'
+        'user_id' => 'int',
+        'product_id' => 'int',
+        'quantity' => 'int',
     ];
-    /**
-     * Relationship: Cart belongs to a User
-     */
+
     public function user()
     {
-        return $this->belongsTo(User::class, 'user_id', '_id');
+        return $this->belongsTo(User::class, 'user_id', 'id');
     }
-    /**
-     * Relationship: Cart belongs to a Product
-     */
+
     public function product()
     {
-        return $this->belongsTo(Product::class, 'product_id', '_id');
+        return $this->belongsTo(Product::class, 'product_id', 'id');
     }
    
 }

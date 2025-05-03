@@ -16,21 +16,25 @@ class UserCredential extends Authenticatable implements JWTSubject
     protected $table = 'user_credentials';
 
     protected $fillable = [
+        'id',
         'username',
         'email',
         'phone',
         'password',
-        'email_verified',
-        'phone_verified',
+        'full_name',
+        'role',
+        // 'email_verified',
+        // 'phone_verified',
     ];
 
     protected $hidden = [
-        'password'
+        'password',
+        'role'
     ];
 
     protected $casts = [
-        'email_verified' => 'boolean',
-        'phone_verified' => 'boolean',
+        // 'email_verified' => 'boolean',
+        // 'phone_verified' => 'boolean',
     ];
 
     /**
@@ -39,14 +43,14 @@ class UserCredential extends Authenticatable implements JWTSubject
      * @param  string  $value
      * @return void
      */
-    public function setPasswordAttribute($value): void
-    {
-        if (Hash::needsRehash($value)) {
-            $this->attributes['password'] = Hash::make($value);
-        } else {
-            $this->attributes['password'] = $value;
-        }
-    }
+    // public function setPasswordAttribute($value): void
+    // {
+    //     if (Hash::needsRehash($value)) {
+    //         $this->attributes['password'] = Hash::make($value);
+    //     } else {
+    //         $this->attributes['password'] = $value;
+    //     }
+    // }
 
     /**
      * Get the identifier that will be stored in the subject claim of the JWT.
@@ -66,5 +70,10 @@ class UserCredential extends Authenticatable implements JWTSubject
     public function getJWTCustomClaims(): array
     {
         return [];
+    }
+
+    public function cartItems()
+    {
+        return $this->hasMany(CartItem::class, 'user_id', 'id');
     }
 }
