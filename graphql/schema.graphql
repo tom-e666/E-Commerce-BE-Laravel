@@ -68,7 +68,7 @@ type CartItemResponse implements BaseResponse {
 type CartItemsResponse implements BaseResponse {
   code: Int!
   message: String!
-  items: [CartItem]
+  items: [CartItem]!
 }
 
 # Product feature
@@ -103,7 +103,7 @@ input SpecificationInput{
 type ProductItemsResponse implements BaseResponse {
   code: Int!
   message: String!
-  products: [ProductItem]
+  products: [ProductItem]!
 }
 type ProductItemResponse implements BaseResponse {
   code: Int!
@@ -123,7 +123,7 @@ type BrandResponse implements BaseResponse {
 type BrandsResponse implements BaseResponse {
   code: Int!
   message: String!
-  brands: [Brand]
+  brands: [Brand]!
 }
 
 type Shipping{
@@ -177,7 +177,7 @@ type ReviewResponse implements BaseResponse {
 type ReviewsResponse implements BaseResponse {
     code: Int!
     message: String!
-    reviews: [Review]
+    reviews: [Review]!
 }
 
 input ReviewInput {
@@ -185,15 +185,14 @@ input ReviewInput {
     rating: Int!
     comment: String
 }
-
+type checkConnectionOutput{
+    code:Int
+    message:String
+}
 # input
 
 type Query{
-    # getUserInfo(jwt:String):UserQueryResponse @field(resolver: "AuthResolver@getUserInfo")
-    # check(message:String): output @field(resolver: "AuthResolver@check")
-    # getTokenState(jwt:String):UserLogResponse! @field(resolver: "AuthResolver@getTokenState")
-    # checkConnection:UserQueryResponse @field(resolver: "AuthResolver@checkConnection")
-    # getCartItems(userId:String):CartItemResponse @field(resolver: "CartItemResolver@getCartItems")
+    checkConnection:checkConnectionOutput @field(resolver: "AuthResolver@checkConnection")
     getPayment(order_id:String):PaymentResponse @field(resolver:"PaymentResolver@getPayment")
     getProduct(id:String!):ProductItemResponse @field(resolver:"ProductResolver@getProduct")
     getProducts(status:String):ProductItemsResponse @field(resolver:"ProductResolver@getProducts")
@@ -222,7 +221,6 @@ type Query{
 }
 
 type Mutation {
-  # signup(user: UserLogInput!):UserLogResponse! @field(resolver: "AuthResolver@signup")
   signup(
     username:String!
     email:String!
@@ -230,7 +228,6 @@ type Mutation {
     password:String!
     full_name:String!
     ):UserResponse! @field(resolver: "AuthResolver@signup")
-  # login(user:UserLogInput!):UserLogResponse!@field(resolver: "AuthResolver@login")
   login(
     email:String!,
     password:String!

@@ -31,8 +31,7 @@ final readonly class AuthResolver
     {
         return ['message' => $args['message']];
     }
-    public function checkConnection($_, array $args): array
-    {
+    public function checkConnection($_, array $args)    {
        try {
         // Check MySQL connection
         \DB::connection('mysql')->getPdo();
@@ -42,7 +41,7 @@ final readonly class AuthResolver
 
         return [
             'code' => 200,
-            'message' => 'success',
+            'message' => 'Database connection successful',
         ];
     } catch (\Exception $e) {
         return [
