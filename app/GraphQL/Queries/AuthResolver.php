@@ -31,7 +31,7 @@ final readonly class AuthResolver
     {
         return ['message' => $args['message']];
     }
-    public function checkConnection($_, array $args): array
+    public function checkConnection($_, array $args)
     {
        try {
         // Check MySQL connection

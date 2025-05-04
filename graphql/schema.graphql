@@ -25,7 +25,7 @@ type UserLogResponse
   message:String
 }
 type UserCredential {
-    id: ID
+    id: ID!
     username: String
     email: String
     phone: String
@@ -38,10 +38,13 @@ type UserResponse implements BaseResponse{
   message:String!
   user:UserCredential
 }
-type AuthPayload{
-  access_token:String!
-  refresh_token:String!
-  expires_at:Int!
+type AuthPayload implements BaseResponse {
+  code: Int!
+  message: String!
+  user: UserCredential
+  access_token:String
+  refresh_token:String
+  expires_at:Int
 }
 
 # Cart feature
@@ -54,9 +57,9 @@ type PaymentInfo{
   payment_status:String 
   transaction_id:String 
 }
-type PaymentResponse{
-  code: Int
-  message: String
+type PaymentResponse implements BaseResponse {
+  code: Int!
+  message: String!
   payment: PaymentInfo
 }
 type CartItemResponse implements BaseResponse {
@@ -113,7 +116,9 @@ type ProductItemResponse implements BaseResponse {
 
 # Brand feature
 type Brand{
+  id: ID!
   name:String
+  
 }
 type BrandResponse implements BaseResponse {
   code: Int!
@@ -185,15 +190,14 @@ input ReviewInput {
     rating: Int!
     comment: String
 }
-
+type BaseResponseImplementation implements BaseResponse {
+  code: Int!
+  message: String!
+}
 # input
 
 type Query{
-    # getUserInfo(jwt:String):UserQueryResponse @field(resolver: "AuthResolver@getUserInfo")
-    # check(message:String): output @field(resolver: "AuthResolver@check")
-    # getTokenState(jwt:String):UserLogResponse! @field(resolver: "AuthResolver@getTokenState")
-    # checkConnection:UserQueryResponse @field(resolver: "AuthResolver@checkConnection")
-    # getCartItems(userId:String):CartItemResponse @field(resolver: "CartItemResolver@getCartItems")
+    checkConnection:BaseResponseImplementation @field(resolver: "AuthResolver@checkConnection")
     getPayment(order_id:String):PaymentResponse @field(resolver:"PaymentResolver@getPayment")
     getProduct(id:String!):ProductItemResponse @field(resolver:"ProductResolver@getProduct")
     getProducts(status:String):ProductItemsResponse @field(resolver:"ProductResolver@getProducts")
@@ -222,24 +226,18 @@ type Query{
 }
 
 type Mutation {
-  # signup(user: UserLogInput!):UserLogResponse! @field(resolver: "AuthResolver@signup")
   signup(
-    username:String!
     email:String!
     phone:String!
     password:String!
     full_name:String!
     ):UserResponse! @field(resolver: "AuthResolver@signup")
-  # login(user:UserLogInput!):UserLogResponse!@field(resolver: "AuthResolver@login")
   login(
     email:String!,
     password:String!
   ):AuthPayload! @field(resolver: "AuthResolver@login")
-  # logout(jwt:String!):Boolean!@field(resolver: "AuthResolver@logout")
   logout(refresh_token: String!):Response! @field(resolver: "AuthResolver@logout")
-  # refreshToken(jwt:String!):UserLogResponse!@field(resolver: "AuthResolver@refreshToken")
   refreshToken(refresh_token:String!):AuthPayload! @field(resolver: "AuthResolver@refreshToken")
-  # invalidateToken(jwt:String!):UserLogResponse! @field(resolver: "AuthResolver@invalidateToken")
   createBrand(name:String!):BrandResponse @field(resolver:"BrandResolver@createBrand")
   createProduct(
     name:String!

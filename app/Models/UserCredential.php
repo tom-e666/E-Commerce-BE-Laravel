@@ -17,7 +17,6 @@ class UserCredential extends Authenticatable implements JWTSubject
 
     protected $fillable = [
         'id',
-        'username',
         'email',
         'phone',
         'password',
