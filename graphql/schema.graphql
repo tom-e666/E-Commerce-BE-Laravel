@@ -117,8 +117,7 @@ type ProductItemResponse implements BaseResponse {
 # Brand feature
 type Brand{
   id: ID!
-  name:String
-  
+  name:String!
 }
 type BrandResponse implements BaseResponse {
   code: Int!
@@ -238,7 +237,11 @@ type Mutation {
   ):AuthPayload! @field(resolver: "AuthResolver@login")
   logout(refresh_token: String!):Response! @field(resolver: "AuthResolver@logout")
   refreshToken(refresh_token:String!):AuthPayload! @field(resolver: "AuthResolver@refreshToken")
-  createBrand(name:String!):BrandResponse @field(resolver:"BrandResolver@createBrand")
+  createBrand(name:String!):BrandResponse
+    @guard(with: ["api"])
+    @can(ability: "create", model: "Brand")
+    @field(resolver:"BrandResolver@createBrand")
+  
   createProduct(
     name:String!
     price:Float!

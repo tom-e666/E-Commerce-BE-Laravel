@@ -54,32 +54,30 @@ final readonly class AuthResolver
     }
     public function login($_, array $args){
         $credentials = ['email' => $args['email'], 'password' => $args['password']];
-        
-        if ( !$token = JWTAuth::attempt($credentials)) {
+
+        $user = UserCredential::where('email', $args['email'])->first();
+        if (!$user) {
+            return $this->error('User not found', 401);
+        }
+        if (!Hash::check($args['password'], $user->password)) {
             return $this->error('Invalid credentials', 401);
         }
-        $user = auth('api')->user();
+        
+        if (!$token = auth('api')->attempt($credentials)) {
+            return $this->error('Could not create token', 401);
+        }
 
         $refreshToken = Str::random(60);
 
-        $existingToken = DB::table('refresh_tokens')
-            ->where('user_id', $user->id)
-            ->first();
-
-        if ($existingToken) {
-            DB::table('refresh_tokens')
-                ->where('user_id', $user->id)
-                ->update([
-                    'token' => $refreshToken,
-                    'expires_at' => now()->addDays(7),
-                ]);
-        } else {
-            DB::table('refresh_tokens')->insert([
+        DB::table('refresh_tokens')->updateOrInsert(
+            ['user_id' => $user->id],
+            [
                 'user_id' => $user->id,
                 'token' => $refreshToken,
                 'expires_at' => now()->addDays(7),
-            ]);
-        }
+            ]
+        );
+
         return $this->success([
             'access_token' => $token,
             'refresh_token' => $refreshToken,

@@ -15,7 +15,7 @@
         "laravel/tinker": "^2.10.1",
         "mll-lab/laravel-graphiql": "^3.3",
         "mongodb/laravel-mongodb": "5.2",
-        "nuwave/lighthouse": "^6.50",
+        "nuwave/lighthouse": "6.50.0",
         "tymon/jwt-auth": "^2.2"
     },
     "require-dev": {

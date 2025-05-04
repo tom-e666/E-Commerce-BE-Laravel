@@ -65,7 +65,7 @@ return [
     |
     */
 
-    'guards' => null,
+    'guards' => ["api"],
 
     /*
     |--------------------------------------------------------------------------
@@ -285,8 +285,10 @@ return [
     */
 
     'error_handlers' => [
-        Nuwave\Lighthouse\Execution\AuthenticationErrorHandler::class,
-        Nuwave\Lighthouse\Execution\AuthorizationErrorHandler::class,
+        \App\GraphQL\Handlers\CustomAuthenticationErrorHandler::class,
+        \App\GraphQL\Handlers\CustomAuthorizationErrorHandler::class,
+        // Nuwave\Lighthouse\Execution\AuthenticationErrorHandler::class,
+        // Nuwave\Lighthouse\Execution\AuthorizationErrorHandler::class,
         Nuwave\Lighthouse\Execution\ValidationErrorHandler::class,
         Nuwave\Lighthouse\Execution\ReportingErrorHandler::class,
     ],
@@ -311,6 +313,7 @@ return [
         Nuwave\Lighthouse\Schema\Directives\SpreadDirective::class,
         Nuwave\Lighthouse\Schema\Directives\RenameArgsDirective::class,
         Nuwave\Lighthouse\Schema\Directives\DropArgsDirective::class,
+        // Nuwave\Lighthouse\Schema\Directives\MiddlewareDirective::class,
     ],
 
     /*
