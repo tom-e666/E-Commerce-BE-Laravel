@@ -11,7 +11,6 @@ use Nuwave\Lighthouse\Execution\HttpGraphQLContext;
 
 final readonly class ProductResolver
 {
-
     use GraphQLResponse;
 
     /** @param  array{}  $args */
