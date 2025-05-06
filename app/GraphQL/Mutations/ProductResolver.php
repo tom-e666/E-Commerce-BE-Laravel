@@ -150,41 +150,33 @@ final readonly class ProductResolver
         }
     }
 
-    // public function updateProductDetail($_, array $args)
-    // {
-    //     $validator=Validator::make($args,[
-    //         'product_id'=>'required|exists:products,id',
-    //         'description'=>'string',
-    //         'images'=>'array',
-    //         'keywords'=>'array',
-    //         'specifications'=>'array',
-    //     ]);
-    //     if($validator->fails)
-    //     {
-    //         return $this->error($validator->errors()->first(), 400);
-    //     }
+    public function deleteProduct($_, array $args)
+    {
+        $validator = Validator::make($args, [
+            'id' => 'required|exists:products,id',
+        ]);
 
-    //     $productDetail=Productdetail::find($args['product_id']);
+        if ($validator->fails()) {
+            return $this->error($validator->errors()->first(), 400);
+        }
 
-    //     if(!$productDetail)
-    //     {
-    //         return $this->error('Product detail not found', 404);
-    //     }
-    //     try {
-    //         $productDetail->fill([
-    //             'description'=>$args['description']??$productDetail->description,
-    //             'images'=>$args['images']??$productDetail->images,
-    //             'keywords'=>$args['keywords']??$productDetail->keywords,
-    //             'specifications'=>$args['specifications']??$productDetail->specifications,
-    //         ]);
-
-    //         $productDetail->save();
-
-    //         return $this->success([
-    //             'product_detail' => $productDetail,
-    //         ], 'success', 200);
-    //     } catch (\Exception $e) {
-    //         return $this->error($e->getMessage(), 500);
-    //     }
-    // }
+        try {
+            $product = Product::find($args['id']);
+            
+            if (!$product) {
+                return $this->error('Product not found', 404);
+            }
+            
+            $productDetail = ProductDetail::where('product_id', $product->id)->first();
+            if ($productDetail) {
+                $productDetail->delete();
+            }
+            
+            $product->delete();
+            
+            return $this->success(null, 'Product deleted successfully', 200);
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 500);
+        }
+    }
 }

@@ -76,11 +76,12 @@ type CartItemsResponse implements BaseResponse {
 
 # Product feature
 type ProductItem{
+  id:ID!
   name:String!
   price:Float!
   stock:Int!
   status:Boolean!
-  brand_id:Int!
+  brand_id:ID!
   details: ProductDetails
 }
 type ProductDetails{
@@ -239,12 +240,14 @@ type Mutation {
   logout(refresh_token: String!):Response! @field(resolver: "AuthResolver@logout")
   refreshToken(refresh_token:String!):AuthPayload! @field(resolver: "AuthResolver@refreshToken")
   createBrand(name:String!):BrandResponse @field(resolver:"BrandResolver@createBrand")
+  updateBrand(id:String!, name:String!):BrandResponse @field(resolver:"BrandResolver@updateBrand")
+  deleteBrand(id:String!):Response @field(resolver:"BrandResolver@deleteBrand")
   createProduct(
     name:String!
     price:Float!
     stock:Int!
     status:Boolean!
-    brand_id:Int!
+    brand_id:ID!
     details: ProductDetailsInput!
   ): ProductItemResponse @field(resolver:"ProductResolver@createProduct")
   updateProduct(
@@ -253,9 +256,10 @@ type Mutation {
     price:Float
     stock:Int
     status:Boolean
-    brand_id:Int
+    brand_id:ID
     details: ProductDetailsInput
   ): ProductItemResponse @field(resolver:"ProductResolver@updateProduct")
+  deleteProduct(id:String!): Response @field(resolver:"ProductResolver@deleteProduct")
   createReview(input: ReviewInput!): ReviewResponse @field(resolver: "ReviewMutation@createReview")
   updateReview(id: String!, input: ReviewInput!): ReviewResponse @field(resolver: "ReviewMutation@updateReview")
   deleteReview(id: String!): Response @field(resolver: "ReviewMutation@deleteReview")
@@ -276,6 +280,7 @@ type Mutation {
     old_password:String!
     new_password:String!
   ):Response @field(resolver:"UserCredentialResolver@changePassword")
-}
-type output{message:String}
-#end login feature
+  createSupportTicket(
+    subject: String!String}
+    message: String!
+  ): SupportTicketResponse @field(resolver:"SupportTicketResolver@createSupportTicket")    updateSupportTicket(    id: String!    subject: String    message: String    status: String  ): SupportTicketResponse @field(resolver:"SupportTicketResolver@updateSupportTicket")    deleteSupportTicket(    id: String!  ): Response @field(resolver:"SupportTicketResolver@deleteSupportTicket")    createSupportTicketResponse(    ticket_id: String!    subject: String!    message: String!  ): SupportTicketResponse @field(resolver:"SupportTicketResolver@updateSupportTicketResponse")}type output{message:String}#end login feature
