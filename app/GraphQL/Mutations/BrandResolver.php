@@ -27,14 +27,6 @@ final readonly class BrandResolver
         if ($validator->fails()) {
             return $this->error($validator->errors()->first(), 400);
         }
-
-        // $user = AuthService::Auth();
-        // if(!$user){
-        //     return $this->error('Unauthorized', 401);
-        // } else if(!AuthService::isAdmin()){
-        //     return $this->error('Forbidden', 403);
-        // }
-
         try {
             $brand = Brand::create([
                 'name' => $args['name'],
@@ -56,14 +48,6 @@ final readonly class BrandResolver
         if ($validator->fails()) {
             return $this->error($validator->errors()->first(), 400);
         }
-
-        $user = AuthService::Auth();
-        if(!$user){
-            return $this->error('Unauthorized', 401);
-        } else if(!AuthService::isAdmin()){
-            return $this->error('Forbidden', 403);
-        }
-
         try {
             $brand = Brand::find($args['id']);
             $brand->update([
@@ -71,6 +55,24 @@ final readonly class BrandResolver
             ]);
             return $this->success([
                 'brand' => $brand,
+            ], 'success', 200);
+        } catch (Exception $e) {
+            return $this->error($e->getMessage(), 500);
+        }
+    }
+    public function deleteBrand($_, array $args)
+    {
+        $validator = Validator::make($args, [
+            'id' => 'required|exists:brands,id',
+        ]);
+        if ($validator->fails()) {
+            return $this->error($validator->errors()->first(), 400);
+        }
+        try {
+            $brand = Brand::find($args['id']);
+            $brand->delete();
+            return $this->success([
+                'message' => 'Brand deleted successfully',
             ], 'success', 200);
         } catch (Exception $e) {
             return $this->error($e->getMessage(), 500);

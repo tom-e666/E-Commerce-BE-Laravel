@@ -76,11 +76,12 @@ type CartItemsResponse implements BaseResponse {
 
 # Product feature
 type ProductItem{
+  id:ID!
   name:String!
   price:Float!
   stock:Int!
   status:Boolean!
-  brand_id:Int!
+  brand_id:ID!
   details: ProductDetails
 }
 type ProductDetails{
@@ -165,8 +166,8 @@ type SupportTicketsResponse {
 # Review feature
 type Review {
     id: ID!
-    product_id: String!
-    user_id: String!
+    product_id: ID!
+    user_id: ID!
     rating: Int!
     comment: String
     created_at: String
@@ -186,7 +187,7 @@ type ReviewsResponse implements BaseResponse {
 }
 
 input ReviewInput {
-    product_id: String!
+    product_id: ID!
     rating: Int!
     comment: String
 }
@@ -199,7 +200,7 @@ type BaseResponseImplementation implements BaseResponse {
 type Query{
     checkConnection:BaseResponseImplementation @field(resolver: "AuthResolver@checkConnection")
     getPayment(order_id:String):PaymentResponse @field(resolver:"PaymentResolver@getPayment")
-    getProduct(id:String!):ProductItemResponse @field(resolver:"ProductResolver@getProduct")
+    getProduct(id:ID!):ProductItemResponse @field(resolver:"ProductResolver@getProduct")
     getProducts(status:String):ProductItemsResponse @field(resolver:"ProductResolver@getProducts")
     getPaginatedProducts(
         brand_id: ID
@@ -214,13 +215,13 @@ type Query{
         per_page: Int
     ): ProductItemsResponse @field(resolver:"ProductResolver@getPaginatedProducts")
     getShipping(order_id:String):ShippingResponse @field(resolver:"ShippingResolver@getShipping")
-    getSupportTicket(id:String):SupportTicketResponse @field(resolver:"SupportTicketResolver@getSupportTicket")
-    getSupportTickets(user_id: String, created_after: String, created_before: String, status: String): SupportTicketsResponse @field(resolver:"SupportTicketResolver@getSupportTickets")
-    getSupportTicketResponses(ticket_id:String):SupportTicketResponse @field(resolver:"SupportTicketResolver@getSupportTicketResponses")
+    getSupportTicket(id:ID):SupportTicketResponse @field(resolver:"SupportTicketResolver@getSupportTicket")
+    getSupportTickets(user_id: ID, created_after: String, created_before: String, status: String): SupportTicketsResponse @field(resolver:"SupportTicketResolver@getSupportTickets")
+    getSupportTicketResponses(ticket_id:ID):SupportTicketResponse @field(resolver:"SupportTicketResolver@getSupportTicketResponses")
     getBrands: BrandsResponse @field(resolver:"BrandResolver@getBrands")
-    getBrand(id:String!):BrandResponse @field(resolver:"BrandResolver@getBrand")
-    getReviews(product_id: String): ReviewsResponse @field(resolver: "ReviewQuery@getReviews")
-    getReview(id: String!): ReviewResponse @field(resolver: "ReviewQuery@getReview")
+    getBrand(id:ID!):BrandResponse @field(resolver:"BrandResolver@getBrand")
+    getReviews(product_id: ID): ReviewsResponse @field(resolver: "ReviewQuery@getReviews")
+    getReview(id: ID!): ReviewResponse @field(resolver: "ReviewQuery@getReview")
     getCartItems:CartItemsResponse @field(resolver:"CartItemResolver@getCartItems")
     getUserInfo:UserResponse @field(resolver:"UserCredentialResolver@getUserCredential")
 }
@@ -239,26 +240,29 @@ type Mutation {
   logout(refresh_token: String!):Response! @field(resolver: "AuthResolver@logout")
   refreshToken(refresh_token:String!):AuthPayload! @field(resolver: "AuthResolver@refreshToken")
   createBrand(name:String!):BrandResponse @field(resolver:"BrandResolver@createBrand")
+  updateBrand(id:ID!, name:String!):BrandResponse @field(resolver:"BrandResolver@updateBrand")
+  deleteBrand(id:ID!):Response @field(resolver:"BrandResolver@deleteBrand")
   createProduct(
     name:String!
     price:Float!
     stock:Int!
     status:Boolean!
-    brand_id:Int!
+    brand_id:ID!
     details: ProductDetailsInput!
   ): ProductItemResponse @field(resolver:"ProductResolver@createProduct")
   updateProduct(
-    id:String!
+    id:ID!
     name:String
     price:Float
     stock:Int
     status:Boolean
-    brand_id:Int
+    brand_id:ID
     details: ProductDetailsInput
   ): ProductItemResponse @field(resolver:"ProductResolver@updateProduct")
+  deleteProduct(id:ID!): Response @field(resolver:"ProductResolver@deleteProduct")
   createReview(input: ReviewInput!): ReviewResponse @field(resolver: "ReviewMutation@createReview")
-  updateReview(id: String!, input: ReviewInput!): ReviewResponse @field(resolver: "ReviewMutation@updateReview")
-  deleteReview(id: String!): Response @field(resolver: "ReviewMutation@deleteReview")
+  updateReview(id: ID!, input: ReviewInput!): ReviewResponse @field(resolver: "ReviewMutation@updateReview")
+  deleteReview(id: ID!): Response @field(resolver: "ReviewMutation@deleteReview")
   addCartItem(
     product_id:ID!
     quantity:Int!
@@ -276,6 +280,29 @@ type Mutation {
     old_password:String!
     new_password:String!
   ):Response @field(resolver:"UserCredentialResolver@changePassword")
+
+  createSupportTicket(
+    subject: String!
+    message: String!
+  ): SupportTicketResponse @field(resolver:"SupportTicketResolver@createSupportTicket")
+  
+  updateSupportTicket(
+    id: ID!
+    subject: String
+    message: String
+    status: String
+  ): SupportTicketResponse @field(resolver:"SupportTicketResolver@updateSupportTicket")
+  
+  deleteSupportTicket(
+    id: ID!
+  ): Response @field(resolver:"SupportTicketResolver@deleteSupportTicket")
+  
+  createSupportTicketResponse(
+    ticket_id: ID!
+    subject: String!
+    message: String!
+  ): SupportTicketResponse @field(resolver:"SupportTicketResolver@updateSupportTicketResponse")
 }
+
 type output{message:String}
 #end login feature
