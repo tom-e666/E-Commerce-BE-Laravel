@@ -1,15 +1,11 @@
 <?php declare(strict_types=1);
-
 namespace App\GraphQL\Mutations;
-
 use App\Models\Product;
 use App\Models\ProductDetail;
 use Illuminate\Support\Facades\Validator;
 use App\GraphQL\Traits\GraphQLResponse;
-
 final readonly class ProductResolver
 {
-
     use GraphQLResponse;
 
     /** @param  array{}  $args */
@@ -171,9 +167,7 @@ final readonly class ProductResolver
             if ($productDetail) {
                 $productDetail->delete();
             }
-            
             $product->delete();
-            
             return $this->success(null, 'Product deleted successfully', 200);
         } catch (\Exception $e) {
             return $this->error($e->getMessage(), 500);
