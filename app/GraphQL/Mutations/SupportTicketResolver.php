@@ -110,4 +110,30 @@ final readonly class SupportTicketResolver
             'status'=>$args['status']??$support_ticket_response->status,
         ]); 
     }
+    public function deleteSupportTicket($_, array $args)
+    {
+        if(!isset($args['id']))
+        {
+            return [
+                'code'=>400,
+                'message'=>'id is required',
+                'support_ticket'=>null,
+            ];
+        }
+        $support_ticket=SupportTicket::find($args['id']);
+        if($support_ticket===null)
+        {
+            return [
+                'code'=>404,
+                'message'=>'Support Ticket not found',
+                'support_ticket'=>null,
+            ];
+        }
+        $support_ticket->delete();
+        return [
+            'code'=>200,
+            'message'=>'success',
+            'support_ticket'=>null,
+        ];
+    }
 }

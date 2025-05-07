@@ -90,12 +90,13 @@ final readonly class AuthResolver
 
     public function logout($_, array $args)
     {
-        $token = JWTAuth::getToken();
-        $payload = JWTAuth::getPayload($token);
-        $exp = $payload['exp'];
-        $ttl = $exp - time();
+        //unblock after adding widdleware authentication
+        // $token = JWTAuth::getToken();
+        // $payload = JWTAuth::getPayload($token);
+        // $exp = $payload['exp'];
+        // $ttl = $exp - time();
 
-        Cache::put('blacklist' . $token, true, $ttl);
+        // Cache::put('blacklist' . $token, true, $ttl);
 
         if(isset($args['refresh_token']))
         {
