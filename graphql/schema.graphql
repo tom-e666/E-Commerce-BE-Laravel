@@ -198,10 +198,11 @@ type BaseResponseImplementation implements BaseResponse {
 # input
 
 type Query{
+    getUserByJWT:UserResponse @field(resolver: "AuthResolver@getUserByJWT")
     checkConnection:BaseResponseImplementation @field(resolver: "AuthResolver@checkConnection")
-    getPayment(order_id:String):PaymentResponse @field(resolver:"PaymentResolver@getPayment")
-    getProduct(id:ID!):ProductItemResponse @field(resolver:"ProductResolver@getProduct")
-    getProducts(status:String):ProductItemsResponse @field(resolver:"ProductResolver@getProducts")
+    getPayment(order_id:String):PaymentResponse @field(resolver: "PaymentResolver@getPayment")
+    getProduct(id:ID!):ProductItemResponse @field(resolver: "ProductResolver@getProduct")
+    getProducts(status:String):ProductItemsResponse @field(resolver: "ProductResolver@getProducts")
     getPaginatedProducts(
         brand_id: ID
         category_id: ID
@@ -213,20 +214,26 @@ type Query{
         sort_order: String
         page: Int
         per_page: Int
-    ): ProductItemsResponse @field(resolver:"ProductResolver@getPaginatedProducts")
-    getShipping(order_id:String):ShippingResponse @field(resolver:"ShippingResolver@getShipping")
-    getSupportTicket(id:ID):SupportTicketResponse @field(resolver:"SupportTicketResolver@getSupportTicket")
+    ): ProductItemsResponse @field(resolver: "ProductResolver@getPaginatedProducts")
+    getShipping(order_id:String):ShippingResponse @field(resolver: "ShippingResolver@getShipping")
+    getSupportTicket(id:ID):SupportTicketResponse @field(resolver: "SupportTicketResolver@getSupportTicket")
     getSupportTickets(user_id: ID, created_after: String, created_before: String, status: String): SupportTicketsResponse @field(resolver:"SupportTicketResolver@getSupportTickets")
     getSupportTicketResponses(ticket_id:ID):SupportTicketResponse @field(resolver:"SupportTicketResolver@getSupportTicketResponses")
-    getBrands: BrandsResponse @field(resolver:"BrandResolver@getBrands")
-    getBrand(id:ID!):BrandResponse @field(resolver:"BrandResolver@getBrand")
+    getBrands: BrandsResponse @field(resolver: "BrandResolver@getBrands")
+    getBrand(id:ID!):BrandResponse @field(resolver: "BrandResolver@getBrand")
     getReviews(product_id: ID): ReviewsResponse @field(resolver: "ReviewQuery@getReviews")
     getReview(id: ID!): ReviewResponse @field(resolver: "ReviewQuery@getReview")
-    getCartItems:CartItemsResponse @field(resolver:"CartItemResolver@getCartItems")
-    getUserInfo:UserResponse @field(resolver:"UserCredentialResolver@getUserCredential")
+    getCartItems:CartItemsResponse @field(resolver: " CartItemResolver@getCartItems")
+    getUserInfo:UserResponse @field(resolver: "UserCredentialResolver@getUserCredential")
 }
 
 type Mutation {
+  signup(
+    email:String!
+    phone:String!
+    password:String!
+    full_name:String!
+  ):UserResponse! @field(resolver: "AuthResolver@signup")
   signup(
     email:String!
     phone:String!
@@ -266,10 +273,11 @@ type Mutation {
   addCartItem(
     product_id:ID!
     quantity:Int!
-  ):CartItemResponse @field(resolver:"CartItemResolver@updateCart")
+  ):CartItemResponse @field(resolver: "CartItemResolver@updateCart") @guard(with: ["api"])
+    
   removeCartItem(
     product_id:ID!
-  ):Response @field(resolver:"CartItemResolver@deleteItem")
+  ):Response @field(resolver: "CartItemResolver@deleteCartItem") @guard(with: ["api"])
   updateUserInfo(
     username:String
     email:String

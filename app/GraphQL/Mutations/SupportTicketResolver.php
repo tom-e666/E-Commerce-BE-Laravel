@@ -2,6 +2,10 @@
 
 namespace App\GraphQL\Mutations;
 
+use App\Models\SupportTicket;
+use App\Models\SupportTicketResponse;
+use Illuminate\Support\Facades\Validator;
+
 final readonly class SupportTicketResolver
 {
     /** @param  array{}  $args */
@@ -109,6 +113,12 @@ final readonly class SupportTicketResolver
         $support_ticket_response->update([
             'status'=>$args['status']??$support_ticket_response->status,
         ]); 
+        
+        return [
+            'code'=>200,
+            'message'=>'success',
+            'support_ticket_response'=>$support_ticket_response,
+        ];
     }
     public function deleteSupportTicket($_, array $args)
     {

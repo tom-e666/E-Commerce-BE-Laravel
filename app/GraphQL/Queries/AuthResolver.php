@@ -78,4 +78,30 @@ final readonly class AuthResolver
             ];
         }
     }
+    public function getUserByJWT($_, array $args): array
+    {
+        try {
+            $user = auth('api')->user();
+            
+            if ($user) {
+                return [
+                    'code' => 200,
+                    'message' => 'success',
+                    'user' => $user
+                ];
+            }
+            
+            return [
+                'code' => 401,
+                'message' => 'No user found',
+                'user' => null
+            ];
+        } catch (\Exception $e) {
+            return [
+                'code' => 500,
+                'message' => 'Error retrieving user: ' . $e->getMessage(),
+                'user' => null
+            ];
+        }
+    }
 }

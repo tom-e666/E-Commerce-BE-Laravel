@@ -38,6 +38,9 @@ return [
             // middleware, this delegates auth and permission checks to the field level.
             Nuwave\Lighthouse\Http\Middleware\AttemptAuthentication::class,
 
+            // Make sure the JWT auth middleware is included here
+            \Tymon\JWTAuth\Http\Middleware\Authenticate::class,
+
             // Logs every incoming GraphQL query.
             // Nuwave\Lighthouse\Http\Middleware\LogGraphQLQueries::class,
 

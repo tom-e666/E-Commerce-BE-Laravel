@@ -162,4 +162,18 @@ final readonly class AuthResolver
             ];
         }
     }
+
+    public function someProtectedMethod($_, array $args)
+    {
+        // Get the authenticated user
+        $user = auth('api')->user();
+        
+        // Check if user is authenticated
+        if (!$user) {
+            return $this->error('Unauthorized. Authentication required.', 401);
+        }
+        
+        // Continue with the authenticated logic
+        // ...
+    }
 }
