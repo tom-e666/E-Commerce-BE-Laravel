@@ -8,7 +8,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Product extends Model
 {
-    use Hasfactory;
+    use HasFactory;
+    
     protected $fillable =[
         'name',
         'price',
@@ -37,5 +38,28 @@ class Product extends Model
     public function brand()
     {
         return $this->belongsTo(Brand::class, 'brand_id', 'id');
+    }
+
+    public function labelDetail()
+    {
+        $details = $this->details;
+        
+        if (!$details) {
+            return [
+                'product_id' => $this->id,
+                'images' => null,
+                'price' => $this->price,
+                'stock' => $this->stock,
+                'status' => $this->status,
+            ];
+        }
+        
+        return [
+            'product_id' => $this->id,
+            'images' => $details->images && count($details->images) > 0 ? $details->images[0] : null,
+            'price' => $this->price,
+            'stock' => $this->stock,
+            'status' => $this->status,
+        ];
     }
 }

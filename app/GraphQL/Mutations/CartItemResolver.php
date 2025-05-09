@@ -29,7 +29,7 @@ final readonly class CartItemResolver
         $user = AuthService::Auth(); // pre-handled by middleware
         $cartItem = CartItem::where('user_id', $user->id)->where('product_id',$args['product_id'])->first();
         if ($cartItem) {
-            $cartItem->quantity += $args['quantity'];
+            $cartItem->quantity = $args['quantity'];
             $cartItem->save();
         }else{
             $cartItem = CartItem::create([
@@ -48,7 +48,8 @@ final readonly class CartItemResolver
         if($validator->fails()){
             return $this->error($validator->errors()->first(), 400);
         }
-        $user = AuthService::Auth(); //pre-handled by middleware
+        $user = AuthService::Auth();
+        
         $cartItem = CartItem::where('user_id', $user->id)->where('product_id',$args['product_id'])->first();
         if (!$cartItem) {
             return $this->error('CartItem not found', 404);

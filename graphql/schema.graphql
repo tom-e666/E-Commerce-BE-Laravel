@@ -1,7 +1,6 @@
 #start login feature
 input UserLogInput
 {
-  username:String
   email:String
   phone:String
   password:String!
@@ -26,7 +25,6 @@ type UserLogResponse
 }
 type UserCredential {
     id: ID!
-    username: String
     email: String
     phone: String
     # email_verified: Boolean
@@ -49,8 +47,17 @@ type AuthPayload implements BaseResponse {
 
 # Cart feature
 type CartItem{
-  product_id:ID!
+  id: ID!
   quantity:Int!
+  product: CartProductDetails
+}
+type CartProductDetails {
+  product_id: ID!
+  name: String!
+  price: Float!
+  image: String  
+  stock: Int!    
+  status: Boolean!
 }
 type PaymentInfo{
   payment_method:String
@@ -71,7 +78,7 @@ type CartItemResponse implements BaseResponse {
 type CartItemsResponse implements BaseResponse {
   code: Int!
   message: String!
-  items: [CartItem]
+  cart_items: [CartItem]
 }
 
 # Product feature
@@ -223,10 +230,9 @@ type Query{
     getBrand(id:ID!):BrandResponse @field(resolver: "BrandResolver@getBrand")
     getReviews(product_id: ID): ReviewsResponse @field(resolver: "ReviewQuery@getReviews")
     getReview(id: ID!): ReviewResponse @field(resolver: "ReviewQuery@getReview")
-    getCartItems:CartItemsResponse @field(resolver: " CartItemResolver@getCartItems")
+    getCartItems:CartItemsResponse @field(resolver: "CartItemResolver@getCartItems")
     getUserInfo:UserResponse @field(resolver: "UserCredentialResolver@getUserCredential")
 }
-
 type Mutation {
   signup(
     email:String!
@@ -279,7 +285,6 @@ type Mutation {
     product_id:ID!
   ):Response @field(resolver: "CartItemResolver@deleteCartItem") @guard(with: ["api"])
   updateUserInfo(
-    username:String
     email:String
     phone:String
     full_name:String
@@ -311,6 +316,7 @@ type Mutation {
     message: String!
   ): SupportTicketResponse @field(resolver:"SupportTicketResolver@updateSupportTicketResponse")
 }
+
 
 type output{message:String}
 #end login feature
