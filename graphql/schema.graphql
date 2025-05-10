@@ -230,7 +230,7 @@ type Query{
     getBrand(id:ID!):BrandResponse @field(resolver: "BrandResolver@getBrand")
     getReviews(product_id: ID): ReviewsResponse @field(resolver: "ReviewQuery@getReviews")
     getReview(id: ID!): ReviewResponse @field(resolver: "ReviewQuery@getReview")
-    getCartItems:CartItemsResponse @field(resolver: "CartItemResolver@getCartItems")
+    getCartItems:CartItemsResponse @field(resolver: "CartItemResolver@getCartItems") @guard(with: ["api"])
     getUserInfo:UserResponse @field(resolver: "UserCredentialResolver@getUserCredential")
 }
 type Mutation {

@@ -36,52 +36,42 @@ class Handler extends ExceptionHandler
      */
     public function render($request, Throwable $e)
     {
-        if ($request->wantsJson() || $request->is('graphql*')) {
-            // Handle GraphQL specific authentication exceptions
             if ($e instanceof \Nuwave\Lighthouse\Exceptions\AuthenticationException) {
                 return response()->json([
-                    'errors' => [
-                        [
-                            'message' => 'Authentication required',
-                            'extensions' => [
-                                'code' => 4013,
-                                'category' => 'authentication'
-                            ]
-                        ]
-                    ],
-                    'data' => null
-                ], 401);
+                    'code' => 4010,
+                    'message' => 'Unauthorized. Authentication Exception.'
+                ], 200);// Return 200 so GraphQL client gets the data payload
             }
             
             // JWT specific exceptions
             if ($e instanceof TokenInvalidException) {
                 return response()->json([
-                    'code' => 4010,
+                    'code' => 4011,
                     'message' => 'Unauthorized. Invalid token.'
-                ], 401);
+                ], 200);
             }
             
             if ($e instanceof TokenExpiredException) {
                 return response()->json([
-                    'code' => 4011,
+                    'code' => 4012,
                     'message' => 'Unauthorized. Token has expired.'
-                ], 401);
+                ], 200);
             }
             
             if ($e instanceof JWTException) {
                 return response()->json([
-                    'code' => 4012,
+                    'code' => 4013,
                     'message' => 'Unauthorized. Token is missing or malformed.'
-                ], 401);
+                ], 200);
             }
             
             if ($e instanceof AuthenticationException) {
                 return response()->json([
-                    'code' => 4013,
+                    'code' => 4014,
                     'message' => 'Unauthorized. Authentication required.'
-                ], 401);
+                ], 200);
             }
-        }
+        
 
         return parent::render($request, $e);
     }

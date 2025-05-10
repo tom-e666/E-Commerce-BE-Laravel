@@ -19,6 +19,9 @@ final readonly class CartItemResolver
     public function getCartItems($_, array $args)
     {
         $user = AuthService::Auth();//middleware
+        if(!$user){
+            return $this->error('Unauthorized', 401);
+        }
          $cartItems = CartItem::where('user_id', $user->id)
         ->select('id', 'product_id', 'quantity', 'updated_at') 
         ->with('product')
