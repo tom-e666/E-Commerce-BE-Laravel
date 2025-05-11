@@ -22,6 +22,12 @@ class ReviewMutation
         {
             return $this->error('Product not found', 404);
         }
+        $existingReview = Review::where('user_id', $user->id)
+                        ->where('order_item_id', $args['order_item_id'])
+                        ->first();
+        if ($existingReview) {
+             return $this->error('You have already reviewed this purchased product', 400);
+        }
         try {
             $review = Review::create([
                 'user_id' => $user->id,
