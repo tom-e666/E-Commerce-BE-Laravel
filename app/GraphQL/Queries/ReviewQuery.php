@@ -4,7 +4,7 @@ namespace App\GraphQL\Queries;
 
 use App\Models\Review;
 use App\GraphQL\Traits\GraphQLResponse;
-
+use App\Services\AuthService;
 class ReviewQuery
 {
     use GraphQLResponse;
