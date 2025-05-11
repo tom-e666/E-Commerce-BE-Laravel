@@ -316,17 +316,17 @@ extend type Query {
 # Mutations
 extend type Mutation {
   createOrderFromCart: orderResponse! @field(resolver: "OrderResolver@createOrderFromCart") @guard(with: ["api"])
-  cancelOrder(order_id: ID!): orderResponse! @field(resolver: "OrderResolver@cancelOrder") @guard(with: ["api"])
-  confirmOrder(order_id: ID!): orderResponse! @field(resolver: "OrderResolver@confirmOrder") @guard(with: ["api"])
-  shipOrder(order_id: ID!): orderResponse! @field(resolver: "OrderResolver@shipOrder") @guard(with: ["api"])
-  deliverOrder(order_id: ID!): orderResponse! @field(resolver: "OrderResolver@deliverOrder") @guard(with: ["api"])
+  cancelOrder(order_id: ID!): BaseResponseImplementation! @field(resolver: "OrderResolver@cancelOrder") @guard(with: ["api"])
+  confirmOrder(order_id: ID!): BaseResponseImplementation! @field(resolver: "OrderResolver@confirmOrder") @guard(with: ["api"])
+  shipOrder(order_id: ID!): BaseResponseImplementation! @field(resolver: "OrderResolver@shipOrder") @guard(with: ["api"])
+  deliverOrder(order_id: ID!): BaseResponseImplementation! @field(resolver: "OrderResolver@deliverOrder") @guard(with: ["api"])
   updateOrderItem(
     order_item_id: ID!
     quantity: Int!
-  ): BaseResponse! @field(resolver: "OrderResolver@updateOrderItem") @guard(with: ["api"])
+  ): BaseResponseImplementation! @field(resolver: "OrderResolver@updateOrderItem") @guard(with: ["api"])
   deleteOrderItem(
     order_item_id: ID!
-  ): BaseResponse @field(resolver: "OrderResolver@deleteOrderItem") @guard(with: ["api"])
+  ): BaseResponseImplementation! @field(resolver: "OrderResolver@deleteOrderItem") @guard(with: ["api"])
 }
 #-----------------------------------------------
 # PAYMENT FEATURE

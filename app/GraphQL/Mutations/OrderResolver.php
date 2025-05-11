@@ -243,7 +243,6 @@ final readonly class OrderResolver
             return [
                 'code' => 400,
                 'message' => 'order_id is required',
-                'order' => null,
             ];
         }
         $user=AuthService::Auth(); // pre-handled by middleware
@@ -252,8 +251,7 @@ final readonly class OrderResolver
             return [
                 'code' => 404,
                 'message' => 'order not found',
-                'order' => null,
-            ];
+=            ];
         }
         $order->status='cancelled';
         $order->save();
@@ -271,14 +269,12 @@ final readonly class OrderResolver
             return [
                 'code' => 200,
                 'message' => 'Order cancelled successfully',
-                'order' => $order,
-            ];
+=            ];
         }catch(\Exception $e){
                 DB::rollBack();
                 return [
                     'code' => 500,
                     'message' => 'Failed to cancel order',
-                    'order' => null,
                 ];
             }
     }
@@ -288,7 +284,6 @@ final readonly class OrderResolver
             return [
                 'code' => 400,
                 'message' => 'order_id is required',
-                'order' => null,
             ];
         }
         $user=AuthService::Auth(); // pre-handled by middleware
@@ -298,7 +293,6 @@ final readonly class OrderResolver
             return [
                 'code' => 404,
                 'message' => 'order not found',
-                'order' => null,
             ];
         }
         $order->status='confirmed';
@@ -306,7 +300,6 @@ final readonly class OrderResolver
         return [
             'code' => 200,
             'message' => 'success',
-            'order' => $order,
         ];
     }
     function shipOrder($_,array $args):array
@@ -314,8 +307,7 @@ final readonly class OrderResolver
         if(!isset($args['order_id'])){
             return [
                 'code' => 400,
-                'message' => 'order_id is required',
-                'order' => null,
+                'message' => 'order_id is required'
             ];
         }
         $user=AuthService::Auth(); // pre-handled by middleware
@@ -325,7 +317,6 @@ final readonly class OrderResolver
             return [
                 'code' => 404,
                 'message' => 'order not found',
-                'order' => null,
             ];
         }
         $order->status='shipped';
@@ -333,7 +324,6 @@ final readonly class OrderResolver
         return [
             'code' => 200,
             'message' => 'success',
-            'order' => $order,
         ];
     }
     function deliverOrder($_,array $args):array
@@ -342,7 +332,6 @@ final readonly class OrderResolver
             return [
                 'code' => 400,
                 'message' => 'order_id is required',
-                'order' => null,
             ];
         }
         $user=AuthService::Auth(); // pre-handled by middleware
@@ -351,7 +340,6 @@ final readonly class OrderResolver
             return [
                 'code' => 404,
                 'message' => 'order not found',
-                'order' => null,
             ];
         }
         $order->status='delivered';
@@ -359,7 +347,6 @@ final readonly class OrderResolver
         return [
             'code' => 200,
             'message' => 'success',
-            'order' => $order,
         ];
     }
 }
