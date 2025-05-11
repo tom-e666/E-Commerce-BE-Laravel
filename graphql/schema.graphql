@@ -62,9 +62,8 @@ input UserLogInput {
 extend type Query {
   getUserByJWT: UserResponse @field(resolver: "AuthResolver@getUserByJWT")@guard(with: ["api"])
   # use AuthResolver
-  getUserCredential: UserResponse @field(resolver: "AuthResolver@getUserCredential")@guard(with: ["api"])
+  getUserCredential: UserResponse @field(resolver: "UserCredentialResolver@getUserCredential")@guard(with: ["api"])
 }
-
 # Mutations
 extend type Mutation {
   #UserCredential

@@ -2,10 +2,8 @@
 
 namespace App\GraphQL\Queries;
 use App\Models\UserCredential;
-use App\GraphQL\Traits\GraphQLResponse;
-
 use App\Services\AuthService;
-
+use App\GraphQL\Traits\GraphQLResponse;
 final readonly class UserCredentialResolver{
 
     use GraphQLResponse;
@@ -19,7 +17,7 @@ final readonly class UserCredentialResolver{
     public function getUserCredential($_, array $args)
 {
     try {
-        $user = AuthService::Auth();
+        $user= auth('api')->user();
         if (!$user) {
             return [
                 'code' => 401,

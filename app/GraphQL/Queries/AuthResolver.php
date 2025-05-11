@@ -4,7 +4,17 @@ declare(strict_types=1);
 
 namespace App\GraphQL\Queries;
 
-use App\Services\AuthService;
+use App\Models\UserCredential;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
+use Tymon\JWTAuth\JWT;
+use Tymon\JWTAuth\Facades\JWTAuth;
+use App\GraphQL\Traits\GraphQLResponse;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
+
+
 
 final readonly class AuthResolver
 {
@@ -79,7 +89,7 @@ final readonly class AuthResolver
     public function getUserCredential($_, array $args): array
     {
         try {
-            $user = AuthService::Auth();
+            $user = auth('api')->user();
             if (!$user) {
                 return [
                     'code' => 401,
@@ -93,7 +103,6 @@ final readonly class AuthResolver
                 'user' => $user
             ];
         } catch (\Exception $e) {
-            // Catch token exceptions gracefully
             return [
                 'code' => 401,
                 'message' => "Failed to obtain user",
