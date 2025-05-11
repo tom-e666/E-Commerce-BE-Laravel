@@ -27,4 +27,8 @@ class Review extends Model
     {
         return $this->belongsTo(UserCredential::class, 'user_id', 'id');
     }
+    public function setProductIdAttribute($value)
+    {
+        $this->attributes['product_id'] = (string)$value;
+    }
 }

@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace App\GraphQL\Queries;
 
-use http\Message;
-use Tymon\JWTAuth\Contracts\Providers\Auth;
-use Tymon\JWTAuth\Facades\JWTAuth;
+use App\Services\AuthService;
 
 final readonly class AuthResolver
 {
@@ -14,11 +12,12 @@ final readonly class AuthResolver
     public function __invoke(null $_, array $args) {}
     public function getUserInfo($_, array $args)
     {
-        JWTAuth::setToken($args['jwt']);
-        if (!$user = JWTAuth::check())
+
+        $user =AuthService::Auth();
+        if (!$user)
             return [
                 'code' => 401,
-                'message' => 'Unauthorized/invalid token',
+                'message' => 'Unauthorized',
                 'user' => null
             ];
         return [
@@ -51,38 +50,11 @@ final readonly class AuthResolver
         ];
     }
     }
-    public function getTokenState($_, array $args): array
-    {
-
-
-        try {
-            JWTAuth::setToken($args['jwt']);
-            if (JWTAuth::check()) {
-                return [
-                    'code' => 200,
-                    'message' => "token valid",
-                    'token' => null,
-                ];
-            }
-            return
-                [
-                    'code' => 401,
-                    'message' => 'token invalid',
-                    'token' => null,
-                ];
-        } catch (\Exception $e) {
-            return [
-                'code' => 500,
-                'message' => 'internal server error',
-                'token' => null,
-            ];
-        }
-    }
+    
     public function getUserByJWT($_, array $args): array
     {
         try {
-            $user = auth('api')->user();
-            
+            $user = AuthService::getUserByJWT($args['jwt']);
             if ($user) {
                 return [
                     'code' => 200,
@@ -100,6 +72,31 @@ final readonly class AuthResolver
             return [
                 'code' => 500,
                 'message' => 'Error retrieving user: ' . $e->getMessage(),
+                'user' => null
+            ];
+        }
+    }
+    public function getUserCredential($_, array $args): array
+    {
+        try {
+            $user = AuthService::Auth();
+            if (!$user) {
+                return [
+                    'code' => 401,
+                    'message' => 'Unauthorized',
+                    'user' => null
+                ];
+            }
+            return [
+                'code' => 200,
+                'message' => 'success',
+                'user' => $user
+            ];
+        } catch (\Exception $e) {
+            // Catch token exceptions gracefully
+            return [
+                'code' => 401,
+                'message' => "Failed to obtain user",
                 'user' => null
             ];
         }

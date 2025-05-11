@@ -52,7 +52,7 @@ class ReviewMutation
         {
             return $this->error('Unauthorized', 401);
         }
-        $review = Review::find($args['revew_id']);
+        $review = Review::find($args['review_id']);
         if (!$review) {
             return $this->error('Review not found', 404);
         }

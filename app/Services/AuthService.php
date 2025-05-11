@@ -8,6 +8,9 @@ class AuthService{
     public static function Auth(){
         return JWTAuth::parseToken()->authenticate();
     }
+    public static function getToken(){
+        return JWTAuth::getToken();
+    }
     public static function isAdmin(){
         $user = self::Auth();
         if($user && $user->role === 'admin'){

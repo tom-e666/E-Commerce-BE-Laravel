@@ -60,12 +60,24 @@ input UserLogInput {
 
 # Queries
 extend type Query {
-  getUserByJWT: UserResponse @field(resolver: "AuthResolver@getUserByJWT")
-  getUserInfo: UserResponse @field(resolver: "UserCredentialResolver@getUserCredential")
+  getUserByJWT: UserResponse @field(resolver: "AuthResolver@getUserByJWT")@guard(with: ["api"])
+  # use AuthResolver
+  getUserCredential: UserResponse @field(resolver: "AuthResolver@getUserCredential")@guard(with: ["api"])
 }
 
 # Mutations
 extend type Mutation {
+  #UserCredential
+  updateUserInfo(
+    email: String
+    phone: String
+    full_name: String
+  ): BaseResponseImplementation @field(resolver: "UserCredentialResolver@updateUserInfo")
+  changePassword(
+    old_password: String!
+    new_password: String!
+  ): BaseResponseImplementation @field(resolver: "UserCredentialResolver@changePassword")
+  #Auth
   signup(
     email: String!
     phone: String!

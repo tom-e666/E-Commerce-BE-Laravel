@@ -54,14 +54,15 @@ class ReviewQuery
         {
             return $this->error('product_id is required', 400);
         }
+        $productId= (string)$args['product_id'];
         if(isset($args['amount']))
         {
-                $reviews = Review::where('product_id', $args['product_id'])->orderBy('created_at', 'desc')->limit($args['amount'])->get();
+                $reviews = Review::where('product_id', $productId)->orderBy('created_at', 'desc')->limit($args['amount'])->get();
                 return $this->success([
                     'reviews' => $reviews->toArray(),
                 ], 'Success', 200);
         }
-        $reviews = Review::where('product_id', $args['product_id'])->get();
+        $reviews = Review::where('product_id', $productId)->get();
         return $this->success([
             'reviews' => $reviews->toArray(),
         ], 'Success', 200);

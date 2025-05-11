@@ -3,6 +3,7 @@
 namespace App\GraphQL\Queries;
 use App\Models\UserCredential;
 use App\GraphQL\Traits\GraphQLResponse;
+
 use App\Services\AuthService;
 
 final readonly class UserCredentialResolver{
@@ -15,16 +16,30 @@ final readonly class UserCredentialResolver{
         // TODO implement the resolver
     }
 
-    public function getUserCredential($_, array $args): array
-    {
+    public function getUserCredential($_, array $args)
+{
+    try {
         $user = AuthService::Auth();
-        if(!$user){
-            return $this->error('Unauthorized', 401);
+        if (!$user) {
+            return [
+                'code' => 401,
+                'message' => 'Unauthorized',
+                'user' => null
+            ];
         }
-
-        $userCredential = UserCredential::where('id', $user->id)->first();
-        return $this->success([
-            'user' => $userCredential,
-        ], 'success', 200);
+        return [
+            'code' => 200,
+            'message' => 'success',
+            'user' => $user
+        ];
+    } catch (\Exception $e) {
+        // Catch token exceptions gracefully
+        return [
+            'code' => 401,
+            'message' => 'Authentication failed: ' . $e->getMessage(), // Fixed: now returns string
+            'user' => null
+        ];
     }
+}
+    
 }

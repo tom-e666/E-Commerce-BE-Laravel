@@ -2,7 +2,6 @@
 
 namespace App\GraphQL\Mutations;
 use App\Models\UserCredential;
-use App\GraphQL\Traits\GraphQLResponse;
 use App\Services\AuthService;
 
 final readonly class UserCredentialResolver{
@@ -21,13 +20,11 @@ final readonly class UserCredentialResolver{
             'full_name' => 'string|max:255',
             'email' => 'email|max:255',
             'phone' => 'string|max:15',
-            'username' => 'string|max:255',
         ]);
 
         if ($validation->fails()) {
             return $this->error($validation->errors()->first(), 400);
         }
-
         $updateData = [];
         if (isset($args['full_name'])) {
             $updateData['full_name'] = $args['full_name'];
@@ -45,7 +42,6 @@ final readonly class UserCredentialResolver{
         if (empty($updateData)) {
             return $this->error('No fields to update', 400);
         }
-
         $user = AuthService::Auth();
         if(!$user){
             return $this->error('Unauthorized', 401);
