@@ -56,7 +56,7 @@ class ReviewQuery
         }
         if(isset($args['amount']))
         {
-                $reviews = Review::where('product_id', $args['product_id'])->orderBy('created_at', 'desc')->limit($args['amount']);
+                $reviews = Review::where('product_id', $args['product_id'])->orderBy('created_at', 'desc')->limit($args['amount'])->get();
                 return $this->success([
                     'reviews' => $reviews->toArray(),
                 ], 'Success', 200);

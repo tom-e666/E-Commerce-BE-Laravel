@@ -458,7 +458,7 @@ type ReviewsResponse implements BaseResponse {
 # Queries
 extend type Query {
   getReviewsByUser: ReviewsResponse @field(resolver: "ReviewQuery@getReviewsByUser")
-  getReviewsByProduct(product_id: ID!,amount: Int!): ReviewsResponse @field(resolver: "ReviewQuery@getReviewsByProduct")
+  getReviewsByProduct(product_id: ID!,amount: Int): ReviewsResponse @field(resolver: "ReviewQuery@getReviewsByProduct")
 }
 # Mutations
 extend type Mutation {
