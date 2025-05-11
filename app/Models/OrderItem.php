@@ -9,15 +9,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class OrderItem extends Model
 {
     use HasFactory;
-
     protected $fillable = [
         'order_id',
         'product_id',
         'quantity',
         'price',
-        'options',
     ];
-
     protected $casts = [
         'price' => 'float',
         'options' => 'array',

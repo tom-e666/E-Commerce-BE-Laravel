@@ -1,17 +1,13 @@
 <?php declare(strict_types=1);
 
 namespace App\GraphQL\Mutations;
-/**
-    order:
-    create
-    update delete
-    
-    
-    orderItem:
-    update
-    delete
-    create
- */
+use App\Models\Order;
+use App\Models\OrderItem;
+use App\Models\CartItem;
+use App\Models\Product;
+use App\Services\AuthService;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB;
 final readonly class OrderResolver
 {
     /** @param  array{}  $args */
@@ -19,65 +15,61 @@ final readonly class OrderResolver
     {
         // TODO implement the resolver
     }
-    public function updateOrderItem($_,$args): array
+    public function updateOrderItem($_,array $args):array
     {
-        if(!isset($args['order_id'])){
+        $user=AuthService::Auth(); // pre-handled by middleware
+        if(!$user){
             return [
-                'code' => 400,
-                'message' => 'order_id is required',
-                'orderItem' => null,
+                'code' => 401,
+                'message' => 'Unauthorized',
             ];
         }
-        if(!isset($args['product_id'])){
+        if(!isset($args['order_item_id'])){
             return [
                 'code' => 400,
-                'message' => 'product_id is required',
-                'orderItem' => null,
+                'message' => 'order_item_id is required',
             ];
         }
-        $orderItem= OrderItem::where('order_id',$args['order_id'])->where('product_id',$args['product_id'])->first();
-        if($orderItem===null){
+        $orderItem=OrderItem::find($args['order_item_id']);
+        if($orderItem===null || $orderItem->order->user_id !== $user->id){
             return [
                 'code' => 404,
                 'message' => 'orderItem not found',
-                'orderItem' => null,
             ];
         }
-        $orderItem=[
-            'quantity'=>$args['quantity'] ?? $orderItem->quantity,
-            'price'=>$args['price'] ?? $orderItem->price,
-        ];
+        $orderItem->quantity = $args['quantity'] ?? $orderItem->quantity;
         $orderItem->save();
+        return [
+            'code' => 200,
+            'message' => 'success',
+        ];
     }
     public function deleteOrderItem($_,array $args):array
     {
-        if(!isset($args['order_id'])){
+        $user=AuthService::Auth(); // pre-handled by middleware
+        if(!$user){
             return [
-                'code' => 400,
-                'message' => 'order_id is required',
-                'orderItem' => null,
+                'code' => 401,
+                'message' => 'Unauthorized',
             ];
         }
-        if(!isset($args['product_id'])){
+        if(!isset($args['order_item_id'])){
             return [
                 'code' => 400,
-                'message' => 'product_id is required',
-                'orderItem' => null,
+                'message' => 'order_item_id is required',
             ];
         }
-        $orderItem= OrderItem::where('order_id',$args['order_id'])->where('product_id',$args['product_id'])->first();
-        if($orderItem===null){
+        $orderItem=OrderItem::find($args['order_item_id']);
+        if($orderItem===null || $orderItem->order->user_id !== $user->id){
             return [
                 'code' => 404,
                 'message' => 'orderItem not found',
-                'orderItem' => null,
             ];
         }
         $orderItem->delete();
         return [
             'code' => 200,
             'message' => 'success',
-            'orderItem' => $orderItem,
         ];
     }
     public function createOrderItem($_,array $args):array
@@ -123,10 +115,11 @@ final readonly class OrderResolver
             ];
         }
         $total_price=OrderItem::where('order_id',$args['order_id'])->sum('price'*'quantity');
+        $total_price= OrderItem::where('order_id',$args['order_id'])->selectRaw('SUM(price * quantity) as total_price')->value('total_price')??0;
         $order= Order::create([
             'user_id' => $args['user_id'],
             'status' => $args['status'],
-            'total_price' => $args['total_price'],
+            'total_price' => $args['total_price']??0,
         ]);
         return [
             'code' => 200,
@@ -151,10 +144,8 @@ final readonly class OrderResolver
                 'order' => null,
             ];
         }
-        $order=[
-            'status'=>$args['status'] ?? $order->status,
-            'total_price'=>$args['total_price'] ?? $order->total_price,
-        ];
+        $order->status=$args['status'] ?? $order->status;
+        $order->price=$args['total_price'] ?? $order->total_price;
         $order->save();
         return [
             'code' => 200,
@@ -188,9 +179,187 @@ final readonly class OrderResolver
         }
         $order->delete();   
         return [
-            code => 200,
-            message => 'success',
-            order => null,
+            'code' => 200,
+           'message' => 'success',
+            'order' => null,
+        ];
+    }
+    public function createOrderFromCart($_,array $args):array
+    {
+        $user = AuthService::Auth(); // pre-handled by middleware
+        if(!$user){
+            return [
+                'code' => 401,
+                'message' => 'Unauthorized',
+                'order' => null,
+            ];
+        }
+        $cartItems = CartItem::where('user_id', $user->id)->get();
+        if($cartItems->isEmpty()){
+            return [
+                'code' => 400,
+                'message' => 'Cart is empty',
+                'order' => null,
+            ];
+        }
+        $total_price = 0;
+        foreach ($cartItems as $item) {
+            $total_price += $item->product->price * $item->quantity;
+        }
+        DB::beginTransaction();
+        try {
+            $order = Order::create([
+                'user_id' => $user->id,
+                'status' => 'pending',
+                'total_price' => $total_price,
+            ]);
+            foreach ($cartItems as $item) {
+                OrderItem::create([
+                    'order_id' => $order->id,
+                    'product_id' => $item->product_id,
+                    'quantity' => $item->quantity,
+                    'price' => $item->product->price,
+                ]);
+            }
+            CartItem::where('user_id', $user->id)->delete();
+            DB::commit();
+            return [
+                'code' => 200,
+                'message' => 'Order created successfully',
+                'order' => $order->load('items'),
+            ];
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return [
+                'code' => 500,
+                'message' => $e->getMessage(),
+                'order' => null,
+            ];
+        }
+    }
+    function cancelOrder($_,array $args):array
+    {
+        if(!isset($args['order_id'])){
+            return [
+                'code' => 400,
+                'message' => 'order_id is required',
+                'order' => null,
+            ];
+        }
+        $user=AuthService::Auth(); // pre-handled by middleware
+        $order= Order::where('id',$args['order_id'])->where('user_id',$user->id)->first();
+        if($order===null){
+            return [
+                'code' => 404,
+                'message' => 'order not found',
+                'order' => null,
+            ];
+        }
+        $order->status='cancelled';
+        $order->save();
+        try {
+            DB::beginTransaction();
+            $orderItems=OrderItem::where('order_id',$args['order_id'])->get();
+            foreach($orderItems as $item){
+                CartItem::create([
+                    'user_id'=>$user->id,
+                    'product_id'=>$item->product_id,
+                    'quantity'=>$item->quantity,
+                ]);
+            }
+            DB::commit();
+            return [
+                'code' => 200,
+                'message' => 'Order cancelled successfully',
+                'order' => $order,
+            ];
+        }catch(\Exception $e){
+                DB::rollBack();
+                return [
+                    'code' => 500,
+                    'message' => 'Failed to cancel order',
+                    'order' => null,
+                ];
+            }
+    }
+    function confirmOrder($_,array $args):array
+    {
+        if(!isset($args['order_id'])){
+            return [
+                'code' => 400,
+                'message' => 'order_id is required',
+                'order' => null,
+            ];
+        }
+        $user=AuthService::Auth(); // pre-handled by middleware
+
+        $order=Order::find($args['order_id'])->where('user_id',$user->id)->first();
+        if($order===null){
+            return [
+                'code' => 404,
+                'message' => 'order not found',
+                'order' => null,
+            ];
+        }
+        $order->status='confirmed';
+        $order->save();
+        return [
+            'code' => 200,
+            'message' => 'success',
+            'order' => $order,
+        ];
+    }
+    function shipOrder($_,array $args):array
+    {
+        if(!isset($args['order_id'])){
+            return [
+                'code' => 400,
+                'message' => 'order_id is required',
+                'order' => null,
+            ];
+        }
+        $user=AuthService::Auth(); // pre-handled by middleware
+        $order=Order::where('id',$args['order_id'])->where('user_id',$user->id)->first();
+
+        if($order===null){
+            return [
+                'code' => 404,
+                'message' => 'order not found',
+                'order' => null,
+            ];
+        }
+        $order->status='shipped';
+        $order->save();
+        return [
+            'code' => 200,
+            'message' => 'success',
+            'order' => $order,
+        ];
+    }
+    function deliverOrder($_,array $args):array
+    {
+        if(!isset($args['order_id'])){
+            return [
+                'code' => 400,
+                'message' => 'order_id is required',
+                'order' => null,
+            ];
+        }
+        $user=AuthService::Auth(); // pre-handled by middleware
+        $order=Order::where('id',$args['order_id'])->where('user_id',$user->id)->first();
+        if($order===null){
+            return [
+                'code' => 404,
+                'message' => 'order not found',
+                'order' => null,
+            ];
+        }
+        $order->status='delivered';
+        $order->save();
+        return [
+            'code' => 200,
+            'message' => 'success',
+            'order' => $order,
         ];
     }
 }

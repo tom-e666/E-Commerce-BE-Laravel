@@ -1,11 +1,6 @@
-#start login feature
-input UserLogInput
-{
-  email:String
-  phone:String
-  password:String!
-}
-
+#-----------------------------------------------
+# COMMON TYPES
+#-----------------------------------------------
 interface BaseResponse {
   code: Int!
   message: String!
@@ -16,41 +11,224 @@ type Response implements BaseResponse {
   message: String!
 }
 
-# User feature
-type UserLogResponse
-{
-  code:String!
-  token:String #JWT
-  message:String
+type BaseResponseImplementation implements BaseResponse {
+  code: Int!
+  message: String!
 }
+
+type Query {
+  checkConnection: BaseResponseImplementation @field(resolver: "AuthResolver@checkConnection")
+}
+
+#-----------------------------------------------
+# AUTHENTICATION & USER FEATURE
+#-----------------------------------------------
+# Types
 type UserCredential {
-    id: ID!
-    email: String
-    phone: String
-    # email_verified: Boolean
-    # phone_verified: Boolean
-    full_name: String
+  id: ID!
+  email: String
+  phone: String
+  full_name: String
 }
-type UserResponse implements BaseResponse{
-  code:Int!
-  message:String!
-  user:UserCredential
+
+type UserResponse implements BaseResponse {
+  code: Int!
+  message: String!
+  user: UserCredential
 }
+
+type UserLogResponse {
+  code: String!
+  token: String #JWT
+  message: String
+}
+
 type AuthPayload implements BaseResponse {
   code: Int!
   message: String!
   user: UserCredential
-  access_token:String
-  refresh_token:String
-  expires_at:Int
+  access_token: String
+  refresh_token: String
+  expires_at: Int
 }
 
-# Cart feature
-type CartItem{
+input UserLogInput {
+  email: String
+  phone: String
+  password: String!
+}
+
+# Queries
+extend type Query {
+  getUserByJWT: UserResponse @field(resolver: "AuthResolver@getUserByJWT")
+  getUserInfo: UserResponse @field(resolver: "UserCredentialResolver@getUserCredential")
+}
+
+# Mutations
+extend type Mutation {
+  signup(
+    email: String!
+    phone: String!
+    password: String!
+    full_name: String!
+  ): UserResponse! @field(resolver: "AuthResolver@signup")
+  
+  login(
+    email: String!
+    password: String!
+  ): AuthPayload! @field(resolver: "AuthResolver@login")
+  
+  logout(refresh_token: String!): Response! @field(resolver: "AuthResolver@logout")
+  refreshToken(refresh_token: String!): AuthPayload! @field(resolver: "AuthResolver@refreshToken")
+  
+  updateUserInfo(
+    email: String
+    phone: String
+    full_name: String
+  ): UserResponse @field(resolver: "UserCredentialResolver@updateUserInfo")
+  
+  changePassword(
+    old_password: String!
+    new_password: String!
+  ): Response @field(resolver: "UserCredentialResolver@changePassword")
+}
+
+#-----------------------------------------------
+# PRODUCT FEATURE
+#-----------------------------------------------
+# Types
+type ProductItem {
   id: ID!
-  quantity:Int!
+  name: String!
+  price: Float!
+  stock: Int!
+  status: Boolean!
+  brand_id: ID!
+  details: ProductDetails
+}
+
+type ProductDetails {
+  description: String!
+  specifications: [Specification!]!
+  images: [String!]!
+  keywords: [String!]!
+}
+
+type Specification {
+  name: String!
+  value: String!
+}
+
+input ProductDetailsInput {
+  description: String!
+  specifications: [SpecificationInput!]!
+  images: [String!]!
+  keywords: [String!]!
+}
+
+input SpecificationInput {
+  name: String!
+  value: String!
+}
+
+type ProductItemsResponse implements BaseResponse {
+  code: Int!
+  message: String!
+  products: [ProductItem]
+}
+
+type ProductItemResponse implements BaseResponse {
+  code: Int!
+  message: String!
+  product: ProductItem
+}
+
+# Queries
+extend type Query {
+  getProduct(id: ID!): ProductItemResponse @field(resolver: "ProductResolver@getProduct")
+  getProducts(status: String): ProductItemsResponse @field(resolver: "ProductResolver@getProducts")
+  getPaginatedProducts(
+    brand_id: ID
+    category_id: ID
+    min_price: Float
+    max_price: Float
+    status: String
+    search: String
+    sort_by: String
+    sort_order: String
+    page: Int
+    per_page: Int
+  ): ProductItemsResponse @field(resolver: "ProductResolver@getPaginatedProducts")
+}
+
+# Mutations
+extend type Mutation {
+  createProduct(
+    name: String!
+    price: Float!
+    stock: Int!
+    status: Boolean!
+    brand_id: ID!
+    details: ProductDetailsInput!
+  ): ProductItemResponse @field(resolver: "ProductResolver@createProduct")
+  
+  updateProduct(
+    id: ID!
+    name: String
+    price: Float
+    stock: Int
+    status: Boolean
+    brand_id: ID
+    details: ProductDetailsInput
+  ): ProductItemResponse @field(resolver: "ProductResolver@updateProduct")
+  
+  deleteProduct(id: ID!): Response @field(resolver: "ProductResolver@deleteProduct")
+}
+
+#-----------------------------------------------
+# BRAND FEATURE
+#-----------------------------------------------
+# Types
+type Brand {
+  id: ID!
+  name: String
+}
+
+type BrandResponse implements BaseResponse {
+  code: Int!
+  message: String!
+  brand: Brand
+}
+
+type BrandsResponse implements BaseResponse {
+  code: Int!
+  message: String!
+  brands: [Brand]
+}
+
+# Queries
+extend type Query {
+  getBrands: BrandsResponse @field(resolver: "BrandResolver@getBrands")
+  getBrand(id: ID!): BrandResponse @field(resolver: "BrandResolver@getBrand")
+}
+
+# Mutations
+extend type Mutation {
+  createBrand(name: String!): BrandResponse @field(resolver: "BrandResolver@createBrand")
+  updateBrand(id: ID!, name: String!): BrandResponse @field(resolver: "BrandResolver@updateBrand")
+  deleteBrand(id: ID!): Response @field(resolver: "BrandResolver@deleteBrand")
+}
+
+#-----------------------------------------------
+# CART FEATURE
+#-----------------------------------------------
+# Types
+type CartItem {
+  id: ID!
+  quantity: Int!
   product: CartProductDetails
 }
+
 type CartProductDetails {
   product_id: ID!
   name: String!
@@ -59,16 +237,7 @@ type CartProductDetails {
   stock: Int!    
   status: Boolean!
 }
-type PaymentInfo{
-  payment_method:String
-  payment_status:String 
-  transaction_id:String 
-}
-type PaymentResponse implements BaseResponse {
-  code: Int!
-  message: String!
-  payment: PaymentInfo
-}
+
 type CartItemResponse implements BaseResponse {
   code: Int!
   message: String!
@@ -81,242 +250,233 @@ type CartItemsResponse implements BaseResponse {
   cart_items: [CartItem]
 }
 
-# Product feature
-type ProductItem{
-  id:ID!
-  name:String!
-  price:Float!
-  stock:Int!
-  status:Boolean!
-  brand_id:ID!
-  details: ProductDetails
+# Queries
+extend type Query {
+  getCartItems: CartItemsResponse @field(resolver: "CartItemResolver@getCartItems") @guard(with: ["api"])
 }
-type ProductDetails{
-  description:String!
-  specifications:[Specification!]!
-  images:[String!]!
-  keywords:[String!]!
+
+# Mutations
+extend type Mutation {
+  addCartItem(
+    product_id: ID!
+    quantity: Int!
+  ): CartItemResponse @field(resolver: "CartItemResolver@updateCart") @guard(with: ["api"])
+    
+  removeCartItem(
+    product_id: ID!
+  ): Response @field(resolver: "CartItemResolver@deleteCartItem") @guard(with: ["api"])
 }
-type Specification{
-  name:String!
-  value:String!
+
+#-----------------------------------------------
+# ORDER FEATURE
+#-----------------------------------------------
+# Types
+type Order {
+  id: ID!
+  user_id: ID!
+  status: OrderStatus!
+  total_price: Float!
+  items: [OrderItem!]
 }
-input ProductDetailsInput{
-  description:String!
-  specifications:[SpecificationInput!]!
-  images:[String!]!
-  keywords:[String!]!
-}
-input SpecificationInput{
-  name:String!
-  value:String!
-}
-type ProductItemsResponse implements BaseResponse {
-  code: Int!
-  message: String!
-  products: [ProductItem]
-}
-type ProductItemResponse implements BaseResponse {
-  code: Int!
-  message: String!
+
+type OrderItem {
+  id: ID!
+  order_id: ID!
+  product_id: ID!
+  quantity: Int!
+  price: Float!
   product: ProductItem
 }
 
-# Brand feature
-type Brand{
-  id: ID!
-  name:String
-  
-}
-type BrandResponse implements BaseResponse {
-  code: Int!
-  message: String!
-  brand: Brand
-}
-type BrandsResponse implements BaseResponse {
-  code: Int!
-  message: String!
-  brands: [Brand]
+enum OrderStatus {
+  PENDING @enum(value: "pending")
+  CONFIRMED @enum(value: "confirmed")
+  SHIPPED @enum(value: "shipped")
+  DELIVERED @enum(value: "delivered")
+  CANCELLED @enum(value: "cancelled")
 }
 
-type Shipping{
+type orderResponse implements BaseResponse {
+  code: Int!
+  message: String!
+  order: Order
+}
+
+type OrdersResponse implements BaseResponse {
+  code: Int!
+  message: String!
+  orders: [Order]
+}
+
+# Queries
+extend type Query {
+  getOrder(order_id: ID!): orderResponse! @field(resolver: "OrderResolver@getOrder") @guard(with: ["api"])
+  getUserOrders: OrdersResponse @field(resolver: "OrderResolver@getUserOrders") @guard(with: ["api"])
+}
+# Mutations
+extend type Mutation {
+  createOrderFromCart: orderResponse! @field(resolver: "OrderResolver@createOrderFromCart") @guard(with: ["api"])
+  cancelOrder(order_id: ID!): orderResponse! @field(resolver: "OrderResolver@cancelOrder") @guard(with: ["api"])
+  confirmOrder(order_id: ID!): orderResponse! @field(resolver: "OrderResolver@confirmOrder") @guard(with: ["api"])
+  shipOrder(order_id: ID!): orderResponse! @field(resolver: "OrderResolver@shipOrder") @guard(with: ["api"])
+  deliverOrder(order_id: ID!): orderResponse! @field(resolver: "OrderResolver@deliverOrder") @guard(with: ["api"])
+  updateOrderItem(
+    order_item_id: ID!
+    quantity: Int!
+  ): BaseResponse! @field(resolver: "OrderResolver@updateOrderItem") @guard(with: ["api"])
+  deleteOrderItem(
+    order_item_id: ID!
+  ): BaseResponse @field(resolver: "OrderResolver@deleteOrderItem") @guard(with: ["api"])
+}
+#-----------------------------------------------
+# PAYMENT FEATURE
+#-----------------------------------------------
+# Types
+type PaymentInfo {
+  payment_method: String
+  payment_status: String 
+  transaction_id: String 
+}
+type PaymentResponse implements BaseResponse {
+  code: Int!
+  message: String!
+  payment: PaymentInfo
+}
+# Queries
+extend type Query {
+  getPayment(order_id: String): PaymentResponse @field(resolver: "PaymentResolver@getPayment")
+}
+
+#-----------------------------------------------
+# SHIPPING FEATURE
+#-----------------------------------------------
+# Types
+type Shipping {
   tracking_code: String
   carrier: String
   estimated_date: String
   status: String
 }
-type ShippingResponse{
-  code:Int
-  message:String
+
+type ShippingResponse {
+  code: Int
+  message: String
   shipping: [Shipping]
 }
-type SupportTicket{
+
+# Queries
+extend type Query {
+  getShipping(order_id: String): ShippingResponse @field(resolver: "ShippingResolver@getShipping")
+}
+
+#-----------------------------------------------
+# SUPPORT TICKET FEATURE
+#-----------------------------------------------
+# Types
+type SupportTicket {
   subject: String
   message: String
   status: String
 }
-type SupportTicketMessage{
+
+type SupportTicketMessage {
   subject: String
   message: String
 }
-type SupportTicketResponse{
-  code:Int
-  message:String
+
+type SupportTicketResponse {
+  code: Int
+  message: String
   supportTicket: SupportTicket
 }
+
 type SupportTicketsResponse {
   code: Int
   message: String
-  supportTickets: [SupportTicket] # Đổi từ `supportTicket` -> `supportTickets`
+  supportTickets: [SupportTicket]
 }
 
-# Review feature
-type Review {
-    id: ID!
-    product_id: ID!
-    user_id: ID!
-    rating: Int!
-    comment: String
-    created_at: String
-    updated_at: String
+# Queries
+extend type Query {
+  getSupportTicket(id: ID): SupportTicketResponse @field(resolver: "SupportTicketResolver@getSupportTicket")
+  getSupportTickets(user_id: ID, created_after: String, created_before: String, status: String): SupportTicketsResponse @field(resolver: "SupportTicketResolver@getSupportTickets")
+  getSupportTicketResponses(ticket_id: ID): SupportTicketResponse @field(resolver: "SupportTicketResolver@getSupportTicketResponses")
 }
 
-type ReviewResponse implements BaseResponse {
-    code: Int!
-    message: String!
-    review: Review
-}
-
-type ReviewsResponse implements BaseResponse {
-    code: Int!
-    message: String!
-    reviews: [Review]
-}
-
-input ReviewInput {
-    product_id: ID!
-    rating: Int!
-    comment: String
-}
-type BaseResponseImplementation implements BaseResponse {
-  code: Int!
-  message: String!
-}
-# input
-
-type Query{
-    getUserByJWT:UserResponse @field(resolver: "AuthResolver@getUserByJWT")
-    checkConnection:BaseResponseImplementation @field(resolver: "AuthResolver@checkConnection")
-    getPayment(order_id:String):PaymentResponse @field(resolver: "PaymentResolver@getPayment")
-    getProduct(id:ID!):ProductItemResponse @field(resolver: "ProductResolver@getProduct")
-    getProducts(status:String):ProductItemsResponse @field(resolver: "ProductResolver@getProducts")
-    getPaginatedProducts(
-        brand_id: ID
-        category_id: ID
-        min_price: Float
-        max_price: Float
-        status: String
-        search: String
-        sort_by: String
-        sort_order: String
-        page: Int
-        per_page: Int
-    ): ProductItemsResponse @field(resolver: "ProductResolver@getPaginatedProducts")
-    getShipping(order_id:String):ShippingResponse @field(resolver: "ShippingResolver@getShipping")
-    getSupportTicket(id:ID):SupportTicketResponse @field(resolver: "SupportTicketResolver@getSupportTicket")
-    getSupportTickets(user_id: ID, created_after: String, created_before: String, status: String): SupportTicketsResponse @field(resolver:"SupportTicketResolver@getSupportTickets")
-    getSupportTicketResponses(ticket_id:ID):SupportTicketResponse @field(resolver:"SupportTicketResolver@getSupportTicketResponses")
-    getBrands: BrandsResponse @field(resolver: "BrandResolver@getBrands")
-    getBrand(id:ID!):BrandResponse @field(resolver: "BrandResolver@getBrand")
-    getReviews(product_id: ID): ReviewsResponse @field(resolver: "ReviewQuery@getReviews")
-    getReview(id: ID!): ReviewResponse @field(resolver: "ReviewQuery@getReview")
-    getCartItems:CartItemsResponse @field(resolver: "CartItemResolver@getCartItems") @guard(with: ["api"])
-    getUserInfo:UserResponse @field(resolver: "UserCredentialResolver@getUserCredential")
-}
-type Mutation {
-  signup(
-    email:String!
-    phone:String!
-    password:String!
-    full_name:String!
-  ):UserResponse! @field(resolver: "AuthResolver@signup")
-  signup(
-    email:String!
-    phone:String!
-    password:String!
-    full_name:String!
-    ):UserResponse! @field(resolver: "AuthResolver@signup")
-  login(
-    email:String!,
-    password:String!
-  ):AuthPayload! @field(resolver: "AuthResolver@login")
-  logout(refresh_token: String!):Response! @field(resolver: "AuthResolver@logout")
-  refreshToken(refresh_token:String!):AuthPayload! @field(resolver: "AuthResolver@refreshToken")
-  createBrand(name:String!):BrandResponse @field(resolver:"BrandResolver@createBrand")
-  updateBrand(id:ID!, name:String!):BrandResponse @field(resolver:"BrandResolver@updateBrand")
-  deleteBrand(id:ID!):Response @field(resolver:"BrandResolver@deleteBrand")
-  createProduct(
-    name:String!
-    price:Float!
-    stock:Int!
-    status:Boolean!
-    brand_id:ID!
-    details: ProductDetailsInput!
-  ): ProductItemResponse @field(resolver:"ProductResolver@createProduct")
-  updateProduct(
-    id:ID!
-    name:String
-    price:Float
-    stock:Int
-    status:Boolean
-    brand_id:ID
-    details: ProductDetailsInput
-  ): ProductItemResponse @field(resolver:"ProductResolver@updateProduct")
-  deleteProduct(id:ID!): Response @field(resolver:"ProductResolver@deleteProduct")
-  createReview(input: ReviewInput!): ReviewResponse @field(resolver: "ReviewMutation@createReview")
-  updateReview(id: ID!, input: ReviewInput!): ReviewResponse @field(resolver: "ReviewMutation@updateReview")
-  deleteReview(id: ID!): Response @field(resolver: "ReviewMutation@deleteReview")
-  addCartItem(
-    product_id:ID!
-    quantity:Int!
-  ):CartItemResponse @field(resolver: "CartItemResolver@updateCart") @guard(with: ["api"])
-    
-  removeCartItem(
-    product_id:ID!
-  ):Response @field(resolver: "CartItemResolver@deleteCartItem") @guard(with: ["api"])
-  updateUserInfo(
-    email:String
-    phone:String
-    full_name:String
-  ):UserResponse @field(resolver:"UserCredentialResolver@updateUserInfo")
-  changePassword(
-    old_password:String!
-    new_password:String!
-  ):Response @field(resolver:"UserCredentialResolver@changePassword")
-
+# Mutations
+extend type Mutation {
   createSupportTicket(
     subject: String!
     message: String!
-  ): SupportTicketResponse @field(resolver:"SupportTicketResolver@createSupportTicket")
+  ): SupportTicketResponse @field(resolver: "SupportTicketResolver@createSupportTicket")
   
   updateSupportTicket(
     id: ID!
     subject: String
     message: String
     status: String
-  ): SupportTicketResponse @field(resolver:"SupportTicketResolver@updateSupportTicket")
+  ): SupportTicketResponse @field(resolver: "SupportTicketResolver@updateSupportTicket")
   
   deleteSupportTicket(
     id: ID!
-  ): Response @field(resolver:"SupportTicketResolver@deleteSupportTicket")
+  ): Response @field(resolver: "SupportTicketResolver@deleteSupportTicket")
   
   createSupportTicketResponse(
     ticket_id: ID!
     subject: String!
     message: String!
-  ): SupportTicketResponse @field(resolver:"SupportTicketResolver@updateSupportTicketResponse")
+  ): SupportTicketResponse @field(resolver: "SupportTicketResolver@updateSupportTicketResponse")
 }
 
+#-----------------------------------------------
+# REVIEW FEATURE
+#-----------------------------------------------
+# Types
+type Review {
+  id: ID!
+  product_id: ID!
+  user_id: ID!
+  rating: Int!
+  comment: String
+  created_at: String
+  updated_at: String
+}
 
-type output{message:String}
-#end login feature
+type ReviewResponse implements BaseResponse {
+  code: Int!
+  message: String!
+  review: Review
+}
+
+type ReviewsResponse implements BaseResponse {
+  code: Int!
+  message: String!
+  reviews: [Review]
+}
+
+input ReviewInput {
+  product_id: ID!
+  rating: Int!
+  comment: String
+}
+
+# Queries
+extend type Query {
+  getReviews(product_id: ID): ReviewsResponse @field(resolver: "ReviewQuery@getReviews")
+  getReview(id: ID!): ReviewResponse @field(resolver: "ReviewQuery@getReview")
+}
+
+# Mutations
+extend type Mutation {
+  createReview(input: ReviewInput!): ReviewResponse @field(resolver: "ReviewMutation@createReview")
+  updateReview(id: ID!, input: ReviewInput!): ReviewResponse @field(resolver: "ReviewMutation@updateReview")
+  deleteReview(id: ID!): Response @field(resolver: "ReviewMutation@deleteReview")
+}
+
+#-----------------------------------------------
+# INITIAL TYPE DEFINITIONS (required)
+#-----------------------------------------------
+# type Mutation {
+#   # This is intentionally empty and extended above
+#   # _dummy: String
+# }

@@ -13,15 +13,14 @@ class Order extends Model
 
     protected $fillable = [
         'user_id',
-        'order_number',
-        'total_amount',
-        'status',
+        'total_price',
+        'status',//pending/comfirmed/shipped/delivered/cancelled
         'payment_status',
         'shipping_address',
     ];
 
     protected $casts = [
-        'total_amount' => 'float',
+        'total_price' => 'float',
     ];
 
     /**
@@ -29,7 +28,7 @@ class Order extends Model
      */
     public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(UserCredentail::class);
     }
 
     /**

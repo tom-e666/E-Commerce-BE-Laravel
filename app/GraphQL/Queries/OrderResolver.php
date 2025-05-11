@@ -1,6 +1,11 @@
 <?php declare(strict_types=1);
 
 namespace App\GraphQL\Queries;
+use App\Models\Order;
+use App\Models\OrderItem;
+use App\Services\AuthService;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB;
 
 final readonly class OrderResolver
 {
@@ -21,27 +26,18 @@ final readonly class OrderResolver
             ];
         }
         $order = Order::find($args['order_id']);
-        if($order===null){
-            return[
+        if($order===null)
+        {
+            return [
                 'code' => 404,
                 'message' => 'order not found',
-                'orderItems' => null,
-            ];
-        }
-        if($order!==null)
-        {
-            $orderItems=OrderItem::where('order_id',$args['order_id'])->get();
-            return [
-                'code' => 200,
-                'message' => 'success',
-                'orderItems' => $orderItems,
-                'order' => $order,
+                'order' => null,
             ];
         }
         return [
-            'code' => 404,
-            'message' => 'order not found',
-            'orderItems' => null,
+            'code' => 200,
+            'message' => 'success',
+            'order' => $order->load('items'),
         ];
     }
     public function getOrdersfromUser($_, array $args): array
@@ -62,18 +58,27 @@ final readonly class OrderResolver
                 'orders' => null,
             ];
         }
-        if($orders!==null)
-        {
-            return [
-                'code' => 200,
-                'message' => 'success',
-                'orders' => $orders,
+        return [
+            'code' => 200,
+            'message' => 'success',
+            'orders' => $orders->load('items'),
+        ];
+    }
+    public function getUserOrders($_, array $args): array
+    {
+        $user = AuthService::Auth();
+        $orders = $user->orders()->get();
+        if($orders===null){
+            return[
+                'code' => 404,
+                'message' => 'user have no orders',
+                'orders' => null,
             ];
         }
         return [
-            'code' => 404,
-            'message' => 'orders not found',
-            'orders' => null,
+            'code' => 200,
+            'message' => 'success',
+            'orders' => $orders->load('items'),
         ];
-    }
+    }   
 }
