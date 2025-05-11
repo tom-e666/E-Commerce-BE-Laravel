@@ -10,68 +10,75 @@ class ReviewMutation
 {
     use GraphQLResponse;
 
-    public function createReview($root, array $args, HttpGraphQLContext $context)
+    public function createReview($root, array $args)
     {
-        $input = $args['input'];
-        $user = $context->user();
-
-        if (!$user) {
+        $user= AuthService::Auth();
+        if(!$user)
+        {
             return $this->error('Unauthorized', 401);
         }
-
-        $review = new Review([
-            'product_id' => $input['product_id'],
-            'user_id' => $user->id,
-            'rating' => $input['rating'],
-            'comment' => $input['comment'] ?? null,
-        ]);
-
-        $review->save();
-
+        $productId = OrderItem::find($args['order_item_id'])->product_id;
+        if(!$productId)
+        {
+            return $this->error('Product not found', 404);
+        }
+        try {
+            $review = Review::create([
+                'user_id' => $user->id,
+                'product_id' => $productId,
+                'rating' => $args['rating']??5,
+                'comment' => $args['comment'] ?? null,
+            ]);
+        } catch (\Exception $e) {
+            return $this->error('Failed to create review', 500);
+        }
         return $this->success([
             'review' => $review->toArray(),
         ], 'Review created successfully', 201);
     }
-
-    public function updateReview($root, array $args, HttpGraphQLContext $context)
+    public function updateReview($root, array $args)
     {
-        $review = Review::find($args['id']);
-        
+        $user= AuthService::Auth();
+        if(!$user)
+        {
+            return $this->error('Unauthorized', 401);
+        }
+        $review = Review::find($args['revew_id']);
         if (!$review) {
             return $this->error('Review not found', 404);
         }
-
-        $user = $context->user();
-        if (!$user || $review->user_id !== $user->id) {
+        if ($review->user_id !== $user->id) {
             return $this->error('Unauthorized', 401);
         }
-
-        $input = $args['input'];
-        $review->update([
-            'rating' => $input['rating'],
-            'comment' => $input['comment'] ?? $review->comment,
-        ]);
-
-        return $this->success([
-            'review' => $review->toArray(),
-        ], 'Review updated successfully', 200);
+        $review->rating = $args['rating'] ?? $review->rating;
+        $review->comment = $args['comment'] ?? $review->comment;
+        try {
+            $review->save();
+        } catch (\Exception $e) {
+            return $this->error('Failed to update review', 500);
+        }
+        return $this->success([], 'Review updated successfully', 200);
     }
 
-    public function deleteReview($root, array $args, HttpGraphQLContext $context)
+    public function deleteReview($root, array $args)
     {
-        $review = Review::find($args['id']);
-        
+       $user= AuthService::Auth();
+        if(!$user)
+        {
+            return $this->error('Unauthorized', 401);
+        }
+        $review = Review::find($args['review_id']);
         if (!$review) {
             return $this->error('Review not found', 404);
         }
-
-        $user = $context->user();
-        if (!$user || $review->user_id !== $user->id) {
+        if ($review->user_id !== $user->id) {
             return $this->error('Unauthorized', 401);
         }
-
-        $review->delete();
-
+        try {
+            $review->delete();
+        } catch (\Exception $e) {
+            return $this->error('Failed to delete review', 500);
+        }
         return $this->success([], 'Review deleted successfully', 200);
     }
 } 

@@ -275,6 +275,7 @@ type Order {
   id: ID!
   user_id: ID!
   status: OrderStatus!
+  created_at: String!
   total_price: Float!
   items: [OrderItem!]
 }
@@ -454,12 +455,6 @@ type ReviewsResponse implements BaseResponse {
   reviews: [Review]
 }
 
-input ReviewInput {
-  product_id: ID!
-  rating: Int!
-  comment: String
-}
-
 # Queries
 extend type Query {
   getReviews(product_id: ID): ReviewsResponse @field(resolver: "ReviewQuery@getReviews")
@@ -468,9 +463,19 @@ extend type Query {
 
 # Mutations
 extend type Mutation {
-  createReview(input: ReviewInput!): ReviewResponse @field(resolver: "ReviewMutation@createReview")
-  updateReview(id: ID!, input: ReviewInput!): ReviewResponse @field(resolver: "ReviewMutation@updateReview")
-  deleteReview(id: ID!): Response @field(resolver: "ReviewMutation@deleteReview")
+  createReview(
+    order_item_id: ID!
+    rating: Int
+    comment: String
+  ): BaseResponseImplementation @field(resolver: "ReviewMutation@createReview")
+  updateReview(
+    review_id: ID!
+    rating: Int
+    comment: String
+  ): BaseResponseImplementation @field(resolver: "ReviewMutation@updateReview")
+  deleteReview(
+    review_id: ID!
+  ): BaseResponseImplementation @field(resolver: "ReviewMutation@deleteReview")
 }
 
 #-----------------------------------------------

@@ -250,8 +250,8 @@ final readonly class OrderResolver
         if($order===null){
             return [
                 'code' => 404,
-                'message' => 'order not found',
-=            ];
+                'message' => 'order not found'
+];
         }
         $order->status='cancelled';
         $order->save();
@@ -269,7 +269,7 @@ final readonly class OrderResolver
             return [
                 'code' => 200,
                 'message' => 'Order cancelled successfully',
-=            ];
+            ];
         }catch(\Exception $e){
                 DB::rollBack();
                 return [

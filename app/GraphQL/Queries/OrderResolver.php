@@ -67,7 +67,7 @@ final readonly class OrderResolver
     public function getUserOrders($_, array $args): array
     {
         $user = AuthService::Auth();
-        $orders = $user->orders()->get();
+        $orders = Order::where('user_id',$user->id)->get();
         if($orders===null){
             return[
                 'code' => 404,
