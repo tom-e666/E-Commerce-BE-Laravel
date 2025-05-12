@@ -62,7 +62,7 @@ input UserLogInput {
 extend type Query {
   getUserByJWT: UserResponse @field(resolver: "AuthResolver@getUserByJWT")@guard(with: ["api"])
   # use AuthResolver
-  getUserCredential: UserResponse @field(resolver: "UserCredentialResolver@getUserCredential")@guard(with: ["api"])
+  getUserCredential: UserResponse @field(resolver: "UserCredentialResolver@getUserCredential")
 }
 # Mutations
 extend type Mutation {
@@ -364,6 +364,7 @@ extend type Query {
 #-----------------------------------------------
 # Types
 type Shipping {
+  id: ID!
   tracking_code: String
   carrier: String
   estimated_date: String
@@ -373,14 +374,38 @@ type Shipping {
 type ShippingResponse {
   code: Int
   message: String
-  shipping: [Shipping]
+  shipping: Shipping
 }
-
+type ShippingsResponse {
+  code: Int
+  message: String
+  shippings: [Shipping]
+}
 # Queries
 extend type Query {
-  getShipping(order_id: String): ShippingResponse @field(resolver: "ShippingResolver@getShipping")
+  getShippingByOrder(order_id: String!): ShippingResponse! @field(resolver: "ShippingResolver@getShippingByOrder")
+  getShippings(status: String): ShippingsResponse! @field(resolver: "ShippingResolver@getShippings")
 }
-
+extend type Mutation {
+  createShipping(
+    order_id: ID!
+    tracking_code: String!
+    carrier: String!
+    estimated_date: String!
+    status: String!
+  ): BaseResponseImplementation! @field(resolver: "ShippingResolver@createShipping")    
+  updateShipping(
+    order_id: ID!
+    tracking_code: String
+    carrier: String
+    estimated_date: String
+    status: String
+  ): BaseResponseImplementation! @field(resolver: "ShippingResolver@updateShipping")
+  updateShippingStatus(
+    id: ID!
+    status: String!
+  ): BaseResponseImplementation! @field(resolver: "ShippingResolver@updateShippingStatus")
+}
 #-----------------------------------------------
 # SUPPORT TICKET FEATURE
 #-----------------------------------------------

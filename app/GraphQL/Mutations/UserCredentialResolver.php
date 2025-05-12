@@ -3,7 +3,7 @@
 namespace App\GraphQL\Mutations;
 use App\Models\UserCredential;
 use App\Services\AuthService;
-
+use App\GraphQL\Traits\GraphQLResponse;
 final readonly class UserCredentialResolver{
 
     use GraphQLResponse;

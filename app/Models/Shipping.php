@@ -9,9 +9,9 @@ class Shipping extends Model
     protected $fillable = [
         'order_id',
         'tracking_code',
-        'carrier',
+        'carrier',//fedex, dhl, ups
         'estimated_date',
-        'status',
+        'status',//packed, shipped, delivered,cancelled
     ];
     public function order()
     {

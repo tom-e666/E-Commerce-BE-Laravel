@@ -3,6 +3,7 @@
 namespace App\GraphQL\Queries;
 use App\Models\Shipping;
 
+
 final readonly class ShippingResolver
 {
     /** @param  array{}  $args */
@@ -10,7 +11,7 @@ final readonly class ShippingResolver
     {
         // TODO implement the resolver
     }
-    public function getShipping($_, array $args)
+    public function getShippingByOrder($_, array $args)
     {
         if(!isset($args['order_id'])){
             return [
@@ -19,11 +20,12 @@ final readonly class ShippingResolver
                 'shipping' => null,
             ];
         }
-        $shipping = Shipping::where($args['order_id'])->first();
+        // It's good practice to specify the column for the where clause
+        $shipping = Shipping::where('order_id', $args['order_id'])->first();
         if ($shipping === null) {
             return [
                 'code' => 404,
-                'message' => 'Shipping not found',
+                'message' => 'Shipping not found for the given order_id',
                 'shipping' => null,
             ];
         }
@@ -31,6 +33,31 @@ final readonly class ShippingResolver
             'code' => 200,
             'message' => 'success',
             'shipping' => $shipping,
+        ];
+    }
+
+    public function getShippings($_, array $args)
+    {
+        $query = Shipping::query();
+
+        if (isset($args['status'])) {
+            $query->where('status', $args['status']);
+        }
+
+        $shipping = $query->orderBy('created_at', 'desc')->get();
+
+        if ($shipping === null) {
+            return [
+                'code' => 404,
+                'message' => 'Shipping not found matching the criteria',
+                'shippings' => null,
+            ];
+        }
+
+        return [
+            'code' => 200,
+            'message' => 'success',
+            'shippings' => $shipping,
         ];
     }
 }

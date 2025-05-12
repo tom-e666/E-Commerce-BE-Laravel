@@ -4,40 +4,25 @@ namespace App\GraphQL\Queries;
 use App\Models\UserCredential;
 use App\Services\AuthService;
 use App\GraphQL\Traits\GraphQLResponse;
+use Tymon\JWTAuth\Facades\JWTAuth;
 final readonly class UserCredentialResolver{
-
     use GraphQLResponse;
-
     /** @param  array{}  $args */
     public function __invoke(null $_, array $args)
     {
         // TODO implement the resolver
     }
-
     public function getUserCredential($_, array $args)
-{
-    try {
-        $user= auth('api')->user();
+    {   
+        $user = AuthService::Auth();
+        
         if (!$user) {
-            return [
-                'code' => 401,
-                'message' => 'Unauthorized',
-                'user' => null
-            ];
+            // AuthService::Auth() now returns null on failure and logs the specific JWT error.
+            // The log will give you the precise reason (e.g., "Token expired", "Token invalid", "Token not provided").
+            return $this->error('Unauthorized: Could not authenticate user from token.', 401);
         }
-        return [
-            'code' => 200,
-            'message' => 'success',
-            'user' => $user
-        ];
-    } catch (\Exception $e) {
-        // Catch token exceptions gracefully
-        return [
-            'code' => 401,
-            'message' => 'Authentication failed: ' . $e->getMessage(), // Fixed: now returns string
-            'user' => null
-        ];
+        return $this->success([
+            'user' => $user,
+        ], 'User retrieved successfully', 200);
     }
-}
-    
 }

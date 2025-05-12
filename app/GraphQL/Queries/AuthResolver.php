@@ -86,28 +86,4 @@ final readonly class AuthResolver
             ];
         }
     }
-    public function getUserCredential($_, array $args): array
-    {
-        try {
-            $user = auth('api')->user();
-            if (!$user) {
-                return [
-                    'code' => 401,
-                    'message' => 'Unauthorized',
-                    'user' => null
-                ];
-            }
-            return [
-                'code' => 200,
-                'message' => 'success',
-                'user' => $user
-            ];
-        } catch (\Exception $e) {
-            return [
-                'code' => 401,
-                'message' => "Failed to obtain user",
-                'user' => null
-            ];
-        }
-    }
 }
