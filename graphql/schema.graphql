@@ -68,7 +68,6 @@ extend type Query {
 extend type Mutation {
   #UserCredential
   updateUserInfo(
-    email: String
     phone: String
     full_name: String
   ): BaseResponseImplementation @field(resolver: "UserCredentialResolver@updateUserInfo")
@@ -369,6 +368,7 @@ type Shipping {
   carrier: String
   estimated_date: String
   status: String
+  address: String
 }
 
 type ShippingResponse {
@@ -393,6 +393,7 @@ extend type Mutation {
     carrier: String!
     estimated_date: String!
     status: String!
+    address: String!
   ): BaseResponseImplementation! @field(resolver: "ShippingResolver@createShipping")    
   updateShipping(
     order_id: ID!
@@ -400,6 +401,7 @@ extend type Mutation {
     carrier: String
     estimated_date: String
     status: String
+    address: String
   ): BaseResponseImplementation! @field(resolver: "ShippingResolver@updateShipping")
   updateShippingStatus(
     id: ID!

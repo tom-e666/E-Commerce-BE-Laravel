@@ -38,7 +38,6 @@ final readonly class UserCredentialResolver{
         if (isset($args['username'])) {
             $updateData['username'] = $args['username'];
         }
-
         if (empty($updateData)) {
             return $this->error('No fields to update', 400);
         }
@@ -69,15 +68,9 @@ final readonly class UserCredentialResolver{
         }
 
         $user = AuthService::Auth();
-        if(!$user){
-            return $this->error('Unauthorized', 401);
-        }
-
-        $userCredential = UserCredential::where('id', $user->id)->first();
-        if($userCredential && password_verify($args['old_password'], $userCredential->password)){
-            $userCredential->update([
-                'password' => bcrypt($args['new_password']),
-            ]);
+        if($user&& password_verify($args['old_password'], $userCredential->password)){
+            $userCredential->password= bcrypt($args['new_password']);
+            $userCredential->save();
             return $this->success([
                 'message' => 'Password updated successfully',
             ], 'success', 200);
@@ -85,25 +78,6 @@ final readonly class UserCredentialResolver{
             return $this->error('Old password is incorrect', 400);
         }
     }
-
-    public function deleteUser($_, array $args): array
-    {
-        $user = AuthService::Auth();
-        if(!$user){
-            return $this->error('Unauthorized', 401);
-        }
-
-        $userCredential = UserCredential::where('id', $user->id)->first();
-        if($userCredential){
-            $userCredential->delete();
-            return $this->success([
-                'message' => 'User deleted successfully',
-            ], 'success', 200);
-        } else {
-            return $this->error('User not found', 404);
-        }
-    }
-
     public function changeUserRole($_, array $args): array
     {
         $validation = validator($args, [

@@ -37,7 +37,7 @@ final readonly class OrderResolver
         return [
             'code' => 200,
             'message' => 'success',
-            'order' => $order->load('items'),
+            'order' => $order->load('items.product'),
         ];
     }
     public function getOrdersfromUser($_, array $args): array
@@ -61,7 +61,7 @@ final readonly class OrderResolver
         return [
             'code' => 200,
             'message' => 'success',
-            'orders' => $orders->load('items'),
+            'orders' => $orders->load('items.product'),
         ];
     }
     public function getUserOrders($_, array $args): array
@@ -78,7 +78,7 @@ final readonly class OrderResolver
         return [
             'code' => 200,
             'message' => 'success',
-            'orders' => $orders->load('items'),
+            'orders' => $orders->load('items.product'),
         ];
     }   
 }

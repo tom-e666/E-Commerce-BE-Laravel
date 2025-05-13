@@ -19,6 +19,7 @@ final readonly class ShippingResolver
             'carrier'=>'',
             'estimated_date'=>'',
             'status'=>'',
+            'address'=>'',
         ]);
         if($validator->fails())
         {
@@ -55,6 +56,7 @@ final readonly class ShippingResolver
             'carrier'=>'',
             'estimated_date'=>'',
             'status'=>'',
+            'address'=>'',
         ]);
         if($validator->fails())
         {
@@ -104,5 +106,4 @@ final readonly class ShippingResolver
             'message' => 'success',
         ];
     }
-        
 }

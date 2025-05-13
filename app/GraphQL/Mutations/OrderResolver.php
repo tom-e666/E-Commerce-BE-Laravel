@@ -226,7 +226,7 @@ final readonly class OrderResolver
             return [
                 'code' => 200,
                 'message' => 'Order created successfully',
-                'order' => $order->load('items'),
+                'order' => $order->load('items.product'),
             ];
         } catch (\Exception $e) {
             DB::rollBack();

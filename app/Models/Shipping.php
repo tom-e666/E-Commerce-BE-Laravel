@@ -11,7 +11,8 @@ class Shipping extends Model
         'tracking_code',
         'carrier',//fedex, dhl, ups
         'estimated_date',
-        'status',//packed, shipped, delivered,cancelled
+        'status',//received//packed, shipped, delivered,cancelled,
+        'address'
     ];
     public function order()
     {
