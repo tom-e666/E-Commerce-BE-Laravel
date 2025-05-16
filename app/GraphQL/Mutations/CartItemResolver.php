@@ -21,21 +21,22 @@ final readonly class CartItemResolver
     {
         $validator=Validator::make($args,[
             'product_id'=>'required|string|exists:products,id',
-            'quantity'=>'required|numeric',
+            'quantity'=>'required|numeric|min:1',
         ]);
         if($validator->fails()){
             return $this->error($validator->errors()->first(), 400);
         }
+
         $user = AuthService::Auth(); // pre-handled by middleware
         $cartItem = CartItem::where('user_id', $user->id)->where('product_id',$args['product_id'])->first();
         if ($cartItem) {
-            $cartItem->quantity = $args['quantity'];
+            $cartItem->quantity = max($cartItem->product->quantity, $args['quantity']);
             $cartItem->save();
         }else{
             $cartItem = CartItem::create([
                 'user_id' => $user->id,
                 'product_id' => $args['product_id'],
-                'quantity' => $args['quantity'],
+                'quantity' => max($args['quantity'], 1),
             ]);
         }
         return $this->success(['item' => $cartItem, ], 'CartItem updated successfully', 200);

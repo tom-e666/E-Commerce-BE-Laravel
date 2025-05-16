@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 final readonly class OrderResolver
 {
+
     /** @param  array{}  $args */
     public function __invoke(null $_, array $args)
     {
@@ -197,126 +198,202 @@ final readonly class OrderResolver
         $cartItems = CartItem::where('user_id', $user->id)->get();
         if($cartItems->isEmpty()){
             return [
-                'code' => 400,
+                'code' => 404,
                 'message' => 'Cart is empty',
                 'order' => null,
             ];
         }
-        $total_price = 0;
-        foreach ($cartItems as $item) {
-            $total_price += $item->product->price * $item->quantity;
-        }
         DB::beginTransaction();
-        try {
+        try{
             $order = Order::create([
                 'user_id' => $user->id,
                 'status' => 'pending',
-                'total_price' => $total_price,
+                'total_price' => 0,
+                'payment_status' => 'pending',
             ]);
-            foreach ($cartItems as $item) {
-                OrderItem::create([
+            $total_price = 0;
+            foreach ($cartItems as $cartItem) {
+                $product = Product::find($cartItem->product_id);
+                if($product === null){
+                    continue;
+                }
+                $orderItem = OrderItem::create([
                     'order_id' => $order->id,
-                    'product_id' => $item->product_id,
-                    'quantity' => $item->quantity,
-                    'price' => $item->product->price,
+                    'product_id' => $cartItem->product_id,
+                    'quantity' => $cartItem->quantity,
+                    'price' => $product->price,
                 ]);
+                $total_price += $product->price * $cartItem->quantity;
             }
-            CartItem::where('user_id', $user->id)->delete();
+            $order->total_price = $total_price;
+            $order->save();
+            $formattedOrder = $this->formatOrderResponse($order);
             DB::commit();
+            
             return [
                 'code' => 200,
-                'message' => 'Order created successfully',
-                'order' => $order->load('items.product'),
+                'message' => 'success',
+                'order' => $formattedOrder,
             ];
-        } catch (\Exception $e) {
+        }catch(\Exception $e){
             DB::rollBack();
             return [
                 'code' => 500,
-                'message' => $e->getMessage(),
+                'message' => 'Internal server error '.$e->getMessage(),
                 'order' => null,
             ];
         }
     }
-    function cancelOrder($_,array $args):array
+    private function formatOrderResponse(Order $order): array
     {
+        return [
+            'id' => $order->id,
+            'user_id' => $order->user_id,
+            'status' => $order->status,
+            'total_price' => $order->total_price,
+            'payment_status' => $order->payment_status,
+            'shipping_address' => $order->shipping_address,
+            'created_at' => $order->created_at,
+            'items' => $order->items->map(function (OrderItem $item) {
+                    return [
+                        'id' => $item->id,
+                        'product_id' => $item->product_id,
+                        'price' => $item->price,
+                        'image' => $item->product->details->images[0] ?? null,
+                        'name' => $item->product->name,
+                        'quantity' => $item->quantity,
+                    ];
+                }),
+            ];
+    }
+    private function updateProductStock(OrderItem $orderItem): void
+    {
+        $product = Product::find($orderItem->product_id);
+        if ($product) {
+            $product->stock -= $orderItem->quantity;
+            $product->save();
+        }
+    }
+    private function restoreProductStock(OrderItem $orderItem): void
+    {
+        $product = Product::find($orderItem->product_id);
+        if ($product) {
+            $product->stock += $orderItem->quantity;
+            $product->save();
+        }
+    }
+    public function confirmOrder($_,array $args):array
+    {
+        try
+        {
+            $validator = Validator::make($args, [
+                'order_id' => 'required|exists:orders,id',
+            ]);
+            if ($validator->fails()) {
+                return [
+                    'code' => 400,
+                    'message' => $validator->errors()->first(),
+                    'order' => null,
+                ];
+            }
+            $user = AuthService::Auth(); // pre-handled by middleware
+            $order = Order::where('id', $args['order_id'])->where('user_id', $user->id)->first();
+            if ($order === null) {
+                return [
+                    'code' => 404,
+                    'message' => 'Order not found',
+                    'order' => null,
+                ];
+            }
+            $order->status = 'confirmed';
+            $order->save();
+            foreach ($order->items as $orderItem) {
+                $this->updateProductStock($orderItem);
+            }
+            return [
+                'code' => 200,
+                'message' => 'success',
+                'order' => $this->formatOrderResponse($order),
+            ];
+        }catch(\Exception $e){
+            return [
+                'code' => 500,
+                'message' => 'Internal server error',
+                'order' => null,
+            ];
+        }
+       
+    }
+    public function cancelOrder($_,array $args):array
+    {
+        $user = AuthService::Auth(); // pre-handled by middleware
+        if(!$user){
+            return [
+                'code' => 401,
+                'message' => 'Unauthorized',
+                'order' => null,
+            ];
+        }
         if(!isset($args['order_id'])){
             return [
                 'code' => 400,
                 'message' => 'order_id is required',
+                'order' => null,
             ];
         }
-        $user=AuthService::Auth(); // pre-handled by middleware
-        $order= Order::where('id',$args['order_id'])->where('user_id',$user->id)->first();
+        try
+        {
+            $order=Order::where('id',$args['order_id'])->where('user_id',$user->id)->first();
         if($order===null){
             return [
                 'code' => 404,
-                'message' => 'order not found'
-];
+                'message' => 'order not found',
+                'order' => null,
+            ];
         }
         $order->status='cancelled';
         $order->save();
-        try {
-            DB::beginTransaction();
-            $orderItems=OrderItem::where('order_id',$args['order_id'])->get();
-            foreach($orderItems as $item){
-                CartItem::create([
-                    'user_id'=>$user->id,
-                    'product_id'=>$item->product_id,
-                    'quantity'=>$item->quantity,
-                ]);
-            }
-            DB::commit();
-            return [
-                'code' => 200,
-                'message' => 'Order cancelled successfully',
-            ];
+        foreach ($order->items as $orderItem) {
+            $this->restoreProductStock($orderItem);
+        }
+        return [
+            'code' => 200,
+            'message' => 'success',
+            'order' => $this->formatOrderResponse($order),
+        ];
         }catch(\Exception $e){
-                DB::rollBack();
-                return [
-                    'code' => 500,
-                    'message' => 'Failed to cancel order',
-                ];
-            }
+            return [
+                'code' => 500,
+                'message' => 'Internal server error',
+                'order' => null,
+            ];
+        }
     }
-    function confirmOrder($_,array $args):array
+    public function shipOrder($_,array $args):array
     {
+        $user = AuthService::Auth(); // pre-handled by middleware
+        if(!$user){
+            return [
+                'code' => 401,
+                'message' => 'Unauthorized',
+                'order' => null,
+            ];
+        }
         if(!isset($args['order_id'])){
             return [
                 'code' => 400,
                 'message' => 'order_id is required',
+                'order' => null,
             ];
         }
-        $user=AuthService::Auth(); // pre-handled by middleware
-
-        $order=Order::find($args['order_id'])->where('user_id',$user->id)->first();
+        try
+        {
+            $order=Order::where('id',$args['order_id'])->where('user_id',$user->id)->first();
         if($order===null){
             return [
                 'code' => 404,
                 'message' => 'order not found',
-            ];
-        }
-        $order->status='confirmed';
-        $order->save();
-        return [
-            'code' => 200,
-            'message' => 'success',
-        ];
-    }
-    function shipOrder($_,array $args):array
-    {
-        if(!isset($args['order_id'])){
-            return [
-                'code' => 400,
-                'message' => 'order_id is required'
-            ];
-        }
-        $user=AuthService::Auth(); // pre-handled by middleware
-        $order=Order::where('id',$args['order_id'])->where('user_id',$user->id)->first();
-
-        if($order===null){
-            return [
-                'code' => 404,
-                'message' => 'order not found',
+                'order' => null,
             ];
         }
         $order->status='shipped';
@@ -324,22 +401,41 @@ final readonly class OrderResolver
         return [
             'code' => 200,
             'message' => 'success',
+            'order' => $this->formatOrderResponse($order),
         ];
+        }catch(\Exception $e){
+            return [
+                'code' => 500,
+                'message' => 'Internal server error',
+                'order' => null,
+            ];
+        }
     }
-    function deliverOrder($_,array $args):array
+    public function deliverOrder($_,array $args):array
     {
+        $user = AuthService::Auth(); // pre-handled by middleware
+        if(!$user){
+            return [
+                'code' => 401,
+                'message' => 'Unauthorized',
+                'order' => null,
+            ];
+        }
         if(!isset($args['order_id'])){
             return [
                 'code' => 400,
                 'message' => 'order_id is required',
+                'order' => null,
             ];
         }
-        $user=AuthService::Auth(); // pre-handled by middleware
-        $order=Order::where('id',$args['order_id'])->where('user_id',$user->id)->first();
+        try
+        {
+            $order=Order::where('id',$args['order_id'])->where('user_id',$user->id)->first();
         if($order===null){
             return [
                 'code' => 404,
                 'message' => 'order not found',
+                'order' => null,
             ];
         }
         $order->status='delivered';
@@ -347,6 +443,14 @@ final readonly class OrderResolver
         return [
             'code' => 200,
             'message' => 'success',
+            'order' => $this->formatOrderResponse($order),
         ];
+        }catch(\Exception $e){
+            return [
+                'code' => 500,
+                'message' => 'Internal server error',
+                'order' => null,
+            ];
+        }
     }
 }

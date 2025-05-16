@@ -275,6 +275,7 @@ extend type Mutation {
   removeCartItem(
     product_id: ID!
   ): Response @field(resolver: "CartItemResolver@deleteCartItem") @guard(with: ["api"])
+
 }
 
 #-----------------------------------------------
@@ -287,16 +288,14 @@ type Order {
   status: OrderStatus!
   created_at: String!
   total_price: Float!
-  items: [OrderItem!]
+  items: [OrderItemDetails!]
 }
-
-type OrderItem {
-  id: ID!
-  order_id: ID!
+type OrderItemDetails {
   product_id: ID!
-  quantity: Int!
+  name: String!
   price: Float!
-  product: ProductItem
+  image: String
+  stock: Int
 }
 
 enum OrderStatus {
@@ -307,7 +306,7 @@ enum OrderStatus {
   CANCELLED @enum(value: "cancelled")
 }
 
-type orderResponse implements BaseResponse {
+type OrderResponse implements BaseResponse {
   code: Int!
   message: String!
   order: Order
@@ -321,12 +320,12 @@ type OrdersResponse implements BaseResponse {
 
 # Queries
 extend type Query {
-  getOrder(order_id: ID!): orderResponse! @field(resolver: "OrderResolver@getOrder") @guard(with: ["api"])
+  getOrder(order_id: ID!): OrderResponse! @field(resolver: "OrderResolver@getOrder") @guard(with: ["api"])
   getUserOrders: OrdersResponse @field(resolver: "OrderResolver@getUserOrders") @guard(with: ["api"])
 }
 # Mutations
 extend type Mutation {
-  createOrderFromCart: orderResponse! @field(resolver: "OrderResolver@createOrderFromCart") @guard(with: ["api"])
+  createOrderFromCart: OrderResponse! @field(resolver: "OrderResolver@createOrderFromCart") @guard(with: ["api"])
   cancelOrder(order_id: ID!): BaseResponseImplementation! @field(resolver: "OrderResolver@cancelOrder") @guard(with: ["api"])
   confirmOrder(order_id: ID!): BaseResponseImplementation! @field(resolver: "OrderResolver@confirmOrder") @guard(with: ["api"])
   shipOrder(order_id: ID!): BaseResponseImplementation! @field(resolver: "OrderResolver@shipOrder") @guard(with: ["api"])

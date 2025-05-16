@@ -14,9 +14,7 @@ class Order extends Model
     protected $fillable = [
         'user_id',
         'total_price',
-        'status',//pending/comfirmed/shipped/delivered/cancelled
-        'payment_status',
-        'shipping_address',
+        'status',//pending/confirmed/   shipped/delivered/cancelled
     ];
 
     protected $casts = [
