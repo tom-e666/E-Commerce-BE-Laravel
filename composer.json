@@ -15,7 +15,7 @@
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10.1",
         "mll-lab/laravel-graphiql": "3.3.3",
-        "mongodb/laravel-mongodb": "5.2",
+        "mongodb/laravel-mongodb": "*",
         "nuwave/lighthouse": "^6.50",
         "tymon/jwt-auth": "^2.2"
     },

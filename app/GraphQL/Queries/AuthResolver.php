@@ -42,24 +42,30 @@ final readonly class AuthResolver
     }
     public function checkConnection($_, array $args)
     {
-       try {
-        // Check MySQL connection
-        \DB::connection('mysql')->getPdo();
-
-        // Check MongoDB connection
-        \DB::connection('mongodb')->getMongoClient();
-
+        try{
+            \DB::connection('mysql')->getPdo();
+        }
+        catch (\Exception $e) {
+            return [
+                'code' => 500,
+                'message' => 'MySQL connection failed: ' . $e->getMessage(),
+            ];
+        }
+        try {
+            \DB::connection('mongodb')->getMongoClient();
+        } catch (\Exception $e) {
+            return [
+                'code' => 500,
+                'message' => 'MongoDB connection failed: ' . $e->getMessage(),
+            ];
+        }
         return [
             'code' => 200,
             'message' => 'success',
         ];
-    } catch (\Exception $e) {
-        return [
-            'code' => 500,
-            'message' => 'Database connection failed: ' . $e->getMessage(),
-        ];
     }
-    }
+    
+    
     
     public function getUserByJWT($_, array $args): array
     {
