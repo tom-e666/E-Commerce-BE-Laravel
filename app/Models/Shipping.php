@@ -8,14 +8,23 @@ class Shipping extends Model
 {
     protected $fillable = [
         'order_id',
-        'tracking_code',
-        'carrier',//GHN,GRAB,SHOP
-        'estimated_date',
         'status',//pending-> packed-> shipped, delivered,cancelled,
         'address',
         'recipient_name',
         'recipient_phone',
-        'note'
+        'note',
+        'ghn_order_code', // GHN order code
+        'province_name',
+        'district_name',
+        'ward_name',
+        'shipping_fee',
+        'expected_delivery_time',
+        'shipping_method', // SHOP, GHN
+        'weight',
+    ];
+    protected $casts = [
+        'expected_delivery_time' => 'datetime',
+        'shipping_fee' => 'float',
     ];
     public function order()
     {

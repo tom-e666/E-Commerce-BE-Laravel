@@ -24,4 +24,8 @@ class OrderStatusChanged implements ShouldBroadcast
     {
         return new Channel('orders');
     }
+    public function getOrder()
+    {
+        return $this->order;
+    }
 }

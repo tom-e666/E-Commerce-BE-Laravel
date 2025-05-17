@@ -343,15 +343,25 @@ extend type Mutation {
 # PAYMENT FEATURE
 #-----------------------------------------------
 # Types
-type PaymentInfo {
-  payment_method: String
-  payment_status: String 
-  transaction_id: String 
-}
-type PaymentResponse implements BaseResponse {
+type PaymentCodResponse implements BaseResponse {
   code: Int!
   message: String!
-  payment: PaymentInfo
+}
+type PaymentZalopayResponse implements BaseResponse {
+  code: Int!
+  message: String!
+  transaction_id: String
+  payment_url: String
+}
+# Mutations
+extend type Mutation {
+  createPaymentZalopay(
+    order_id: String!
+  ): PaymentZalopayResponse @field(resolver: "PaymentResolver@createPaymentZalopay")
+  createPaymentCOD(
+    order_id: String!
+  ): PaymentCodResponse @field(resolver: "PaymentResolver@createPaymentCOD")
+
 }
 # Queries
 extend type Query {
@@ -361,58 +371,94 @@ extend type Query {
 #-----------------------------------------------
 # SHIPPING FEATURE
 #-----------------------------------------------
-# Types
+
 type Shipping {
   id: ID!
-  tracking_code: String!
-  carrier: String!
-  estimated_date: String!
+  order_id: ID!
+  estimated_date: String
   status: String!
   address: String!
-  order_id: ID!
   recipient_name: String!
   recipient_phone: String!
+  note: String
+  ghn_order_code: String
+  province_name: String
+  district_name: String
+  ward_name: String
+  shipping_fee: Float
+  expected_delivery_time: String
   created_at: String!
   updated_at: String!
+  shipping_method: String!
 }
-type ShippingResponse {
-  code: Int
-  message: String
+type Province {
+  ProvinceID: ID!
+  ProvinceName: String!
+}
+type District {
+  DistrictID: ID!
+  DistrictName: String!
+}
+type Ward {
+  WardCode: String!
+  WardName: String!
+}
+
+type ShippingFeeResponse {
+  code: Int!
+  message: String!
+  fee: Float
+  expected_delivery_time: String
+}
+
+type ProvinceResponse {
+  code: Int!
+  message: String!
+  provinces: [Province]
+}
+
+type DistrictResponse {
+  code: Int!
+  message: String!
+  districts: [District]
+}
+
+type WardResponse {
+  code: Int!
+  message: String!
+  wards: [Ward]
+}
+type ShippingResponse implements BaseResponse {
+  code: Int!
+  message: String!
   shipping: Shipping
 }
-type ShippingsResponse {
-  code: Int
-  message: String
-  shippings: [Shipping]
-}
-# Queries
 extend type Query {
-  getShippingByOrder(order_id: String!): ShippingResponse! @field(resolver: "ShippingResolver@getShippingByOrder")
-  getShippings(status: String): ShippingsResponse! @field(resolver: "ShippingResolver@getShippings")
+  getProvinces: ProvinceResponse! @field(resolver: "App\\GraphQL\\Queries\\ShippingResolver@getProvinces")
+  getDistricts(province_id: ID!): DistrictResponse! @field(resolver: "App\\GraphQL\\Queries\\ShippingResolver@getDistricts")
+  getWards(district_id: ID!): WardResponse! @field(resolver: "App\\GraphQL\\Queries\\ShippingResolver@getWards")
+  calculateShippingFee(
+    to_district_id: ID!
+    to_ward_code: String!
+    weight: Int!
+    value: Int
+  ): ShippingFeeResponse! @field(resolver: "App\\GraphQL\\Queries\\ShippingResolver@calculateShippingFee")
+  getShippingByOrderId(order_id: ID!): ShippingResponse! @field(resolver: "App\\GraphQL\\Queries\\ShippingResolver@getShippingByOrderId")
 }
 extend type Mutation {
-  createShipping(
+  createGHNShipping(
     order_id: ID!
-    tracking_code: String!
-    carrier: String!
-    estimated_date: String!
-    status: String!
+    province_name: String!
+    district_name: String!
+    ward_name: String!
     address: String!
     recipient_name: String!
     recipient_phone: String!
-  ): BaseResponseImplementation! @field(resolver: "ShippingResolver@createShipping")    
-  updateShipping(
-    order_id: ID!
-    carrier: String
-    address: String
-    recipient_name: String
-    recipient_phone: String
     note: String
-  ): BaseResponseImplementation! @field(resolver: "ShippingResolver@updateShipping")
-  updateShippingStatus(
-    id: ID!
-    status: String!
-  ): BaseResponseImplementation! @field(resolver: "ShippingResolver@updateShippingStatus")
+    shipping_method: String!
+  ): ShippingResponse! @field(resolver: "App\\GraphQL\\Mutations\\ShippingResolver@createShipping")
+  
+  cancelShipping(shipping_id: ID!): BaseResponseImplementation! @field(resolver: "App\\GraphQL\\Mutations\\ShippingResolver@cancelShipping")
 }
 #-----------------------------------------------
 # SUPPORT TICKET FEATURE
@@ -423,7 +469,6 @@ type SupportTicket {
   message: String
   status: String
 }
-
 type SupportTicketMessage {
   subject: String
   message: String
