@@ -9,10 +9,13 @@ class Shipping extends Model
     protected $fillable = [
         'order_id',
         'tracking_code',
-        'carrier',//fedex, dhl, ups
+        'carrier',//GHN,GRAB,SHOP
         'estimated_date',
-        'status',//received//packed, shipped, delivered,cancelled,
-        'address'
+        'status',//pending-> packed-> shipped, delivered,cancelled,
+        'address',
+        'recipient_name',
+        'recipient_phone',
+        'note'
     ];
     public function order()
     {

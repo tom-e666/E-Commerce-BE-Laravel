@@ -20,7 +20,6 @@ final readonly class ShippingResolver
                 'shipping' => null,
             ];
         }
-        // It's good practice to specify the column for the where clause
         $shipping = Shipping::where('order_id', $args['order_id'])->first();
         if ($shipping === null) {
             return [

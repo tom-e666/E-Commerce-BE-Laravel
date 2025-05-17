@@ -291,11 +291,12 @@ type Order {
   items: [OrderItemDetails!]
 }
 type OrderItemDetails {
+  id: ID!
   product_id: ID!
   name: String!
   price: Float!
   image: String
-  stock: Int
+  quantity: Int!
 }
 
 enum OrderStatus {
@@ -363,13 +364,17 @@ extend type Query {
 # Types
 type Shipping {
   id: ID!
-  tracking_code: String
-  carrier: String
-  estimated_date: String
-  status: String
-  address: String
+  tracking_code: String!
+  carrier: String!
+  estimated_date: String!
+  status: String!
+  address: String!
+  order_id: ID!
+  recipient_name: String!
+  recipient_phone: String!
+  created_at: String!
+  updated_at: String!
 }
-
 type ShippingResponse {
   code: Int
   message: String
@@ -393,14 +398,16 @@ extend type Mutation {
     estimated_date: String!
     status: String!
     address: String!
+    recipient_name: String!
+    recipient_phone: String!
   ): BaseResponseImplementation! @field(resolver: "ShippingResolver@createShipping")    
   updateShipping(
     order_id: ID!
-    tracking_code: String
     carrier: String
-    estimated_date: String
-    status: String
     address: String
+    recipient_name: String
+    recipient_phone: String
+    note: String
   ): BaseResponseImplementation! @field(resolver: "ShippingResolver@updateShipping")
   updateShippingStatus(
     id: ID!
