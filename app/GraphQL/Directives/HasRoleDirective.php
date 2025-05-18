@@ -1,4 +1,4 @@
-<?php declare(strict_types=1);
+<?php
 
 namespace App\GraphQL\Directives;
 
@@ -27,9 +27,12 @@ GRAPHQL;
     }
 
     /**
-     * Wrap around the final field resolver.
+     * Handle field middleware.
+     *
+     * @param \Nuwave\Lighthouse\Schema\Values\FieldValue $fieldValue
+     * @return void
      */
-    public function handleField(FieldValue $fieldValue, \Closure $next): FieldValue
+    public function handleField(FieldValue $fieldValue): void
     {
         $originalResolver = $fieldValue->getResolver();
 
@@ -55,7 +58,5 @@ GRAPHQL;
 
             return $originalResolver($root, $args, $context, $info);
         });
-
-        return $next($fieldValue);
     }
 }

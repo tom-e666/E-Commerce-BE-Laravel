@@ -29,6 +29,7 @@ type UserCredential {
   email: String
   phone: String
   full_name: String
+  role: String    
 }
 
 type UserResponse implements BaseResponse {
@@ -60,22 +61,14 @@ input UserLogInput {
 
 # Queries
 extend type Query {
-  getUserByJWT: UserResponse @field(resolver: "AuthResolver@getUserByJWT")@guard(with: ["api"])
-  # use AuthResolver
-  getUserCredential: UserResponse @field(resolver: "UserCredentialResolver@getUserCredential")
+  getUserByJWT: UserResponse @field(resolver: "AuthResolver@getUserByJWT") @guard(with: ["api"])
+  
+
+  getUserCredential: UserResponse @field(resolver: "UserCredentialResolver@getUserCredential") @guard(with: ["api"])
 }
+
 # Mutations
 extend type Mutation {
-  #UserCredential
-  updateUserInfo(
-    phone: String
-    full_name: String
-  ): BaseResponseImplementation @field(resolver: "UserCredentialResolver@updateUserInfo")
-  changePassword(
-    old_password: String!
-    new_password: String!
-  ): BaseResponseImplementation @field(resolver: "UserCredentialResolver@changePassword")
-  #Auth
   signup(
     email: String!
     phone: String!
@@ -91,16 +84,19 @@ extend type Mutation {
   logout(refresh_token: String!): Response! @field(resolver: "AuthResolver@logout")
   refreshToken(refresh_token: String!): AuthPayload! @field(resolver: "AuthResolver@refreshToken")
   
+  # AUTHENTICATED USER ENDPOINTS
+  # Users can update their own info
   updateUserInfo(
     email: String
     phone: String
     full_name: String
-  ): UserResponse @field(resolver: "UserCredentialResolver@updateUserInfo")
+  ): UserResponse @field(resolver: "UserCredentialResolver@updateUserInfo") @guard(with: ["api"])
   
+  # Users can change their own password
   changePassword(
     old_password: String!
     new_password: String!
-  ): Response @field(resolver: "UserCredentialResolver@changePassword")
+  ): Response @field(resolver: "UserCredentialResolver@changePassword") @guard(with: ["api"])
 }
 
 #-----------------------------------------------
@@ -180,7 +176,7 @@ extend type Mutation {
     status: Boolean!
     brand_id: ID!
     details: ProductDetailsInput!
-  ): ProductItemResponse @field(resolver: "ProductResolver@createProduct")
+  ): ProductItemResponse @field(resolver: "ProductResolver@createProduct") @guard(with: ["api"]) @hasRole(roles: ["admin", "staff"])
   
   updateProduct(
     id: ID!
@@ -190,9 +186,9 @@ extend type Mutation {
     status: Boolean
     brand_id: ID
     details: ProductDetailsInput
-  ): ProductItemResponse @field(resolver: "ProductResolver@updateProduct")
+  ): ProductItemResponse @field(resolver: "ProductResolver@updateProduct") @guard(with: ["api"]) @hasRole(roles: ["admin", "staff"])
   
-  deleteProduct(id: ID!): Response @field(resolver: "ProductResolver@deleteProduct")
+  deleteProduct(id: ID!): Response @field(resolver: "ProductResolver@deleteProduct") @guard(with: ["api"]) @hasRole(roles: ["admin"])
 }
 
 #-----------------------------------------------
@@ -224,9 +220,9 @@ extend type Query {
 
 # Mutations
 extend type Mutation {
-  createBrand(name: String!): BrandResponse @field(resolver: "BrandResolver@createBrand")
-  updateBrand(id: ID!, name: String!): BrandResponse @field(resolver: "BrandResolver@updateBrand")
-  deleteBrand(id: ID!): Response @field(resolver: "BrandResolver@deleteBrand")
+  createBrand(name: String!): BrandResponse @field(resolver: "BrandResolver@createBrand") @guard(with: ["api"]) @hasRole(roles: ["admin", "staff"])
+  updateBrand(id: ID!, name: String!): BrandResponse @field(resolver: "BrandResolver@updateBrand") @guard(with: ["api"]) @hasRole(roles: ["admin", "staff"])
+  deleteBrand(id: ID!): Response @field(resolver: "BrandResolver@deleteBrand") @guard(with: ["api"]) @hasRole(roles: ["admin"])
 }
 
 #-----------------------------------------------
@@ -275,7 +271,6 @@ extend type Mutation {
   removeCartItem(
     product_id: ID!
   ): Response @field(resolver: "CartItemResolver@deleteCartItem") @guard(with: ["api"])
-
 }
 
 #-----------------------------------------------
@@ -290,6 +285,7 @@ type Order {
   total_price: Float!
   items: [OrderItemDetails!]
 }
+
 type OrderItemDetails {
   id: ID!
   product_id: ID!
@@ -322,23 +318,31 @@ type OrdersResponse implements BaseResponse {
 # Queries
 extend type Query {
   getOrder(order_id: ID!): OrderResponse! @field(resolver: "OrderResolver@getOrder") @guard(with: ["api"])
+  
   getUserOrders: OrdersResponse @field(resolver: "OrderResolver@getUserOrders") @guard(with: ["api"])
 }
+
 # Mutations
 extend type Mutation {
   createOrderFromCart: OrderResponse! @field(resolver: "OrderResolver@createOrderFromCart") @guard(with: ["api"])
+  
   cancelOrder(order_id: ID!): BaseResponseImplementation! @field(resolver: "OrderResolver@cancelOrder") @guard(with: ["api"])
-  confirmOrder(order_id: ID!): BaseResponseImplementation! @field(resolver: "OrderResolver@confirmOrder") @guard(with: ["api"])
-  shipOrder(order_id: ID!): BaseResponseImplementation! @field(resolver: "OrderResolver@shipOrder") @guard(with: ["api"])
-  deliverOrder(order_id: ID!): BaseResponseImplementation! @field(resolver: "OrderResolver@deliverOrder") @guard(with: ["api"])
+  
+  confirmOrder(order_id: ID!): BaseResponseImplementation! @field(resolver: "OrderResolver@confirmOrder") @guard(with: ["api"]) @hasRole(roles: ["admin", "staff"])
+  shipOrder(order_id: ID!): BaseResponseImplementation! @field(resolver: "OrderResolver@shipOrder") @guard(with: ["api"]) @hasRole(roles: ["admin", "staff"])
+  deliverOrder(order_id: ID!): BaseResponseImplementation! @field(resolver: "OrderResolver@deliverOrder") @guard(with: ["api"]) @hasRole(roles: ["admin", "staff"])
+  
+
   updateOrderItem(
     order_item_id: ID!
     quantity: Int!
   ): BaseResponseImplementation! @field(resolver: "OrderResolver@updateOrderItem") @guard(with: ["api"])
+  
   deleteOrderItem(
     order_item_id: ID!
   ): BaseResponseImplementation! @field(resolver: "OrderResolver@deleteOrderItem") @guard(with: ["api"])
 }
+
 #-----------------------------------------------
 # PAYMENT FEATURE
 #-----------------------------------------------
@@ -353,40 +357,64 @@ type Payment{
   payment_time: String!
   transaction_id: String
 }
+
 type PaymentResponse implements BaseResponse {
   code: Int!
   message: String!
   payment: Payment
 }
+type PaymentsResponse implements BaseResponse {
+  code: Int!
+  message: String!
+  payments: [Payment]
+}
+
 type PaymentCodResponse implements BaseResponse {
   code: Int!
   message: String!
   transaction_id: String
 }
+
 type PaymentZalopayResponse implements BaseResponse {
   code: Int!
   message: String!
   payment_url: String,
   transaction_id: String
 }
+
 # Mutations
 extend type Mutation {
+  # USER: Can create payment for own orders
+  # ADMIN/STAFF: Can create payment for any order
   createPaymentZalopay(
     order_id: String!
-  ): PaymentZalopayResponse @field(resolver: "PaymentResolver@createPaymentZalopay")
+  ): PaymentZalopayResponse @field(resolver: "PaymentResolver@createPaymentZalopay") @guard(with: ["api"])
+  
   createPaymentCOD(
     order_id: String!
-  ): PaymentCodResponse @field(resolver: "PaymentResolver@createPaymentCOD")
+  ): PaymentCodResponse @field(resolver: "PaymentResolver@createPaymentCOD") @guard(with: ["api"])
 }
+
 # Queries
 extend type Query {
-  getPayment(order_id: String): PaymentResponse @field(resolver: "PaymentResolver@getPayment")
+  # USER: Can view payment for own orders
+  # ADMIN/STAFF: Can view payment for any order
+  getPayment(order_id: String): PaymentResponse @field(resolver: "PaymentResolver@getPayment") @guard(with: ["api"])
+
+   getAllPayments(
+    user_id: ID
+    status: String
+    created_after: String
+    created_before: String
+  ): PaymentsResponse 
+    @field(resolver: "PaymentResolver@getAllPayments") 
+    @guard(with: ["api"]) 
+    @hasRole(roles: ["admin", "staff"])
 }
 
 #-----------------------------------------------
 # SHIPPING FEATURE
 #-----------------------------------------------
-
 type Shipping {
   id: ID!
   order_id: ID!
@@ -406,14 +434,17 @@ type Shipping {
   updated_at: String!
   shipping_method: String!
 }
+
 type Province {
   ProvinceID: ID!
   ProvinceName: String!
 }
+
 type District {
   DistrictID: ID!
   DistrictName: String!
 }
+
 type Ward {
   WardCode: String!
   WardName: String!
@@ -443,25 +474,46 @@ type WardResponse {
   message: String!
   wards: [Ward]
 }
+
 type ShippingResponse implements BaseResponse {
   code: Int!
   message: String!
   shipping: Shipping
 }
+type ShippingsResponse implements BaseResponse {
+  code: Int!
+  message: String!
+  shippings: [Shipping]
+}
+
 extend type Query {
+  # PUBLIC ENDPOINTS - Location data for shipping calculations
   getProvinces: ProvinceResponse! @field(resolver: "App\\GraphQL\\Queries\\ShippingResolver@getProvinces")
   getDistricts(province_id: ID!): DistrictResponse! @field(resolver: "App\\GraphQL\\Queries\\ShippingResolver@getDistricts")
   getWards(district_id: ID!): WardResponse! @field(resolver: "App\\GraphQL\\Queries\\ShippingResolver@getWards")
+  
+  # PUBLIC ENDPOINT - Calculate shipping fee before order
   calculateShippingFee(
     to_district_id: ID!
     to_ward_code: String!
     weight: Int!
     value: Int
   ): ShippingFeeResponse! @field(resolver: "App\\GraphQL\\Queries\\ShippingResolver@calculateShippingFee")
-  getShippingByOrderId(order_id: ID!): ShippingResponse! @field(resolver: "App\\GraphQL\\Queries\\ShippingResolver@getShippingByOrderId")
+  
+  # USER: Can view shipping for own orders
+  # ADMIN/STAFF: Can view shipping for any order
+  getShippingByOrderId(order_id: ID!): ShippingResponse! @field(resolver: "App\\GraphQL\\Queries\\ShippingResolver@getShippingByOrderId") @guard(with: ["api"])}
+
+  getAllShippings(status: String): ShippingsResponse! 
+    @field(resolver: "App\\GraphQL\\Queries\\ShippingResolver@getShippings") 
+    @guard(with: ["api"]) 
+    @hasRole(roles: ["admin", "staff"])
 }
+
 extend type Mutation {
-  createGHNShipping(
+  # USER: Can create shipping for own orders
+  # ADMIN/STAFF: Can create shipping for any order
+ createGHNShipping(
     order_id: ID!
     province_name: String!
     district_name: String!
@@ -471,22 +523,38 @@ extend type Mutation {
     recipient_phone: String!
     note: String
     shipping_method: String!
-  ): ShippingResponse! @field(resolver: "App\\GraphQL\\Mutations\\ShippingResolver@createShipping")
-  
-  cancelShipping(shipping_id: ID!): BaseResponseImplementation! @field(resolver: "App\\GraphQL\\Mutations\\ShippingResolver@cancelShipping")
+  ): ShippingResponse! @field(resolver: "App\\GraphQL\\Mutations\\ShippingResolver@createShipping") @guard(with: ["api"])
+  updateShippingStatus(
+    shipping_id: ID!
+    status: String!
+  ): ShippingResponse! 
+    @field(resolver: "App\\GraphQL\\Mutations\\ShippingResolver@updateShippingStatus") 
+    @guard(with: ["api"]) 
+    @hasRole(roles: ["admin", "staff"])
+
+  cancelShipping(shipping_id: ID!): BaseResponseImplementation! @field(resolver: "App\\GraphQL\\Mutations\\ShippingResolver@cancelShipping") @guard(with: ["api"])
 }
+
 #-----------------------------------------------
 # SUPPORT TICKET FEATURE
 #-----------------------------------------------
 # Types
 type SupportTicket {
+  id: ID!       # Added ID field
   subject: String
   message: String
   status: String
+  user_id: ID!  # Added user_id field
+  created_at: String # Added created_at field
 }
+
 type SupportTicketMessage {
+  id: ID!       # Added ID field
   subject: String
   message: String
+  ticket_id: ID!
+  user_id: ID!
+  created_at: String
 }
 
 type SupportTicketResponse {
@@ -503,32 +571,54 @@ type SupportTicketsResponse {
 
 # Queries
 extend type Query {
-  getSupportTicket(id: ID): SupportTicketResponse @field(resolver: "SupportTicketResolver@getSupportTicket")
-  getSupportTickets(user_id: ID, created_after: String, created_before: String, status: String): SupportTicketsResponse @field(resolver: "SupportTicketResolver@getSupportTickets")
-  getSupportTicketResponses(ticket_id: ID): SupportTicketResponse @field(resolver: "SupportTicketResolver@getSupportTicketResponses")
+  # USER: Can view own support tickets
+  # ADMIN/STAFF: Can view any support ticket
+  getSupportTicket(id: ID): SupportTicketResponse @field(resolver: "SupportTicketResolver@getSupportTicket") @guard(with: ["api"])
+  
+  # USER: Can view own support tickets only
+  # ADMIN/STAFF: Can view all tickets and filter by user_id/status
+  getSupportTickets(
+    user_id: ID, 
+    created_after: String, 
+    created_before: String, 
+    status: String
+  ): SupportTicketsResponse @field(resolver: "SupportTicketResolver@getSupportTickets") @guard(with: ["api"])
+  
+  # USER: Can view responses to own tickets
+  # ADMIN/STAFF: Can view responses to any ticket
+  getSupportTicketResponses(ticket_id: ID): SupportTicketResponse @field(resolver: "SupportTicketResolver@getSupportTicketResponses") @guard(with: ["api"])
 }
+
 # Mutations
 extend type Mutation {
+  # AUTHENTICATED USER: Can create support tickets
   createSupportTicket(
     subject: String!
     message: String!
-  ): SupportTicketResponse @field(resolver: "SupportTicketResolver@createSupportTicket")
+  ): SupportTicketResponse @field(resolver: "SupportTicketResolver@createSupportTicket") @guard(with: ["api"])
+  
+  # USER: Can update own tickets
+  # ADMIN/STAFF: Can update any ticket status
   updateSupportTicket(
     id: ID!
     subject: String
     message: String
     status: String
-  ): SupportTicketResponse @field(resolver: "SupportTicketResolver@updateSupportTicket")
+  ): SupportTicketResponse @field(resolver: "SupportTicketResolver@updateSupportTicket") @guard(with: ["api"])
   
+  # USER: Can delete own tickets
+  # ADMIN/STAFF: Can delete any ticket
   deleteSupportTicket(
     id: ID!
-  ): Response @field(resolver: "SupportTicketResolver@deleteSupportTicket")
+  ): Response @field(resolver: "SupportTicketResolver@deleteSupportTicket") @guard(with: ["api"])
   
+  # USER: Can respond to own tickets
+  # ADMIN/STAFF: Can respond to any ticket
   createSupportTicketResponse(
     ticket_id: ID!
     subject: String!
     message: String!
-  ): SupportTicketResponse @field(resolver: "SupportTicketResolver@updateSupportTicketResponse")
+  ): SupportTicketResponse @field(resolver: "SupportTicketResolver@updateSupportTicketResponse") @guard(with: ["api"])
 }
 
 #-----------------------------------------------
@@ -559,30 +649,43 @@ type ReviewsResponse implements BaseResponse {
 
 # Queries
 extend type Query {
-  getReviewsByUser: ReviewsResponse @field(resolver: "ReviewQuery@getReviewsByUser")
-  getReviewsByProduct(product_id: ID!,amount: Int): ReviewsResponse @field(resolver: "ReviewQuery@getReviewsByProduct")
+  # USER: Can view own reviews
+  # ADMIN/STAFF: Can view all user reviews
+  getReviewsByUser: ReviewsResponse 
+    @field(resolver: "ReviewResolver@getReviewsByUser") 
+    @guard(with: ["api"])
+  
+  # ADMIN/STAFF: Can get reviews filtered by user ID
+  getAllReviews(user_id: ID): ReviewsResponse 
+    @field(resolver: "ReviewResolver@getAllReviews") 
+    @guard(with: ["api"]) 
+    @hasRole(roles: ["admin", "staff"])
+  
+  # PUBLIC ENDPOINT - View product reviews
+  getReviewsByProduct(product_id: ID!, limit: Int, page: Int): ReviewsResponse 
+    @field(resolver: "ReviewResolver@getReviewsByProduct")
 }
+
 # Mutations
 extend type Mutation {
   createReview(
-    order_item_id: ID!
-    rating: Int
+    order_item_id: ID!  
+    rating: Int!
     comment: String
-  ): BaseResponseImplementation @field(resolver: "ReviewMutation@createReview")
+  ): BaseResponseImplementation 
+    @field(resolver: "ReviewResolver@createReview") 
+    @guard(with: ["api"])
   updateReview(
     review_id: ID!
     rating: Int
     comment: String
-  ): BaseResponseImplementation @field(resolver: "ReviewMutation@updateReview")
+  ): BaseResponseImplementation 
+    @field(resolver: "ReviewResolver@updateReview") 
+    @guard(with: ["api"])
+
   deleteReview(
     review_id: ID!
-  ): BaseResponseImplementation @field(resolver: "ReviewMutation@deleteReview")
+  ): BaseResponseImplementation 
+    @field(resolver: "ReviewResolver@deleteReview") 
+    @guard(with: ["api"])
 }
-
-#-----------------------------------------------
-# INITIAL TYPE DEFINITIONS (required)
-#-----------------------------------------------
-# type Mutation {
-#   # This is intentionally empty and extended above
-#   # _dummy: String
-# }

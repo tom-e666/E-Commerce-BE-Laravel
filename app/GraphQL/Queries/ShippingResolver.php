@@ -175,30 +175,48 @@ final readonly class ShippingResolver
         ];
     }
     public function getShippingByOrderId($_, array $args)
-    {
-        if(!isset($args['order_id'])){
-            return [
-                'code' => 400,
-                'message' => 'order_id is required',
-                'shipping' => null,
-            ];
-        }
-        $order= Order::find($args['order_id']);
-  
-        $shipping = Shipping::where('order_id', $args['order_id'])->first();
-        if ($shipping === null) {
-            return [
-                'code' => 404,
-                'message' => 'Shipping not found for the given order_id',
-                'shipping' => null,
-            ];
-        }
+{
+    $user = AuthService::Auth();
+    if (!$user) {
         return [
-            'code' => 200,
-            'message' => 'success',
-            'shipping' => $shipping,
+            'code' => 401,
+            'message' => 'Unauthorized',
+            'shipping' => null,
         ];
     }
+    
+    if (!isset($args['order_id'])) {
+        return [
+            'code' => 400,
+            'message' => 'order_id is required',
+            'shipping' => null,
+        ];
+    }
+    
+    $shipping = Shipping::where('order_id', $args['order_id'])->first();
+    if ($shipping === null) {
+        return [
+            'code' => 404,
+            'message' => 'Shipping not found for the given order_id',
+            'shipping' => null,
+        ];
+    }
+    
+    // Use policy for authorization
+    if (Gate::denies('view', $shipping)) {
+        return [
+            'code' => 403,
+            'message' => 'You are not authorized to view this shipping information',
+            'shipping' => null,
+        ];
+    }
+    
+    return [
+        'code' => 200,
+        'message' => 'success',
+        'shipping' => $shipping,
+    ];
+}
     public function getShippings($_, array $args)
     {
         $query = Shipping::query();

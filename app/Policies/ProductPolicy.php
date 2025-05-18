@@ -4,63 +4,51 @@ namespace App\Policies;
 
 use App\Models\Product;
 use App\Models\UserCredential;
-use Illuminate\Auth\Access\Response;
 
 class ProductPolicy
 {
     /**
      * Determine whether the user can view any models.
      */
-    public function viewAny(UserCredential $userCredential): bool
+    public function viewAny(UserCredential $user): bool
     {
-        return false;
+        // Everyone can view products
+        return true;
     }
 
     /**
      * Determine whether the user can view the model.
      */
-    public function view(UserCredential $userCredential, Product $product): bool
+    public function view(UserCredential $user, Product $product): bool
     {
-        return false;
+        // Everyone can view products
+        return true;
     }
 
     /**
      * Determine whether the user can create models.
      */
-    public function create(UserCredential $userCredential): bool
+    public function create(UserCredential $user): bool
     {
-        return false;
+        // Only admin and staff can create products
+        return $user->isAdmin() || $user->isStaff();
     }
 
     /**
      * Determine whether the user can update the model.
      */
-    public function update(UserCredential $userCredential, Product $product): bool
+    public function update(UserCredential $user, Product $product): bool
     {
-        return false;
+        // Only admin and staff can update products
+        return $user->isAdmin() || $user->isStaff();
     }
 
     /**
      * Determine whether the user can delete the model.
      */
-    public function delete(UserCredential $userCredential, Product $product): bool
+    public function delete(UserCredential $user, Product $product): bool
     {
-        return false;
-    }
-
-    /**
-     * Determine whether the user can restore the model.
-     */
-    public function restore(UserCredential $userCredential, Product $product): bool
-    {
-        return false;
-    }
-
-    /**
-     * Determine whether the user can permanently delete the model.
-     */
-    public function forceDelete(UserCredential $userCredential, Product $product): bool
-    {
-        return false;
+        // Only admin can delete products
+        return $user->isAdmin();
     }
 }

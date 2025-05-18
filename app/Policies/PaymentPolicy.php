@@ -4,63 +4,53 @@ namespace App\Policies;
 
 use App\Models\Payment;
 use App\Models\UserCredential;
-use Illuminate\Auth\Access\Response;
+use App\Models\Order;
 
 class PaymentPolicy
 {
     /**
-     * Determine whether the user can view any models.
+     * Determine whether the user can view any payments.
      */
-    public function viewAny(UserCredential $userCredential): bool
+    public function viewAny(UserCredential $user): bool
     {
-        return false;
+        // Only admin and staff can view all payments
+        return $user->isAdmin() || $user->isStaff();
     }
 
     /**
-     * Determine whether the user can view the model.
+     * Determine whether the user can view a specific payment.
      */
-    public function view(UserCredential $userCredential, Payment $payment): bool
+    public function view(UserCredential $user, Payment $payment): bool
     {
-        return false;
+        // Users can view their own payments, admin and staff can view any payment
+        $order = Order::find($payment->order_id);
+        return ($order && $order->user_id === $user->id) || $user->isAdmin() || $user->isStaff();
     }
 
     /**
-     * Determine whether the user can create models.
+     * Determine whether the user can create payments.
      */
-    public function create(UserCredential $userCredential): bool
+    public function create(UserCredential $user, Order $order): bool
     {
-        return false;
+        // Users can create payments for their own orders, admin and staff can create for any order
+        return $order->user_id === $user->id || $user->isAdmin() || $user->isStaff();
     }
 
     /**
-     * Determine whether the user can update the model.
+     * Determine whether the user can update payments.
      */
-    public function update(UserCredential $userCredential, Payment $payment): bool
+    public function update(UserCredential $user, Payment $payment): bool
     {
-        return false;
+        // Only admin and staff can update payment status
+        return $user->isAdmin() || $user->isStaff();
     }
 
     /**
-     * Determine whether the user can delete the model.
+     * Determine whether the user can delete payments.
      */
-    public function delete(UserCredential $userCredential, Payment $payment): bool
+    public function delete(UserCredential $user, Payment $payment): bool
     {
-        return false;
-    }
-
-    /**
-     * Determine whether the user can restore the model.
-     */
-    public function restore(UserCredential $userCredential, Payment $payment): bool
-    {
-        return false;
-    }
-
-    /**
-     * Determine whether the user can permanently delete the model.
-     */
-    public function forceDelete(UserCredential $userCredential, Payment $payment): bool
-    {
-        return false;
+        // Only admin can delete payments
+        return $user->isAdmin();
     }
 }

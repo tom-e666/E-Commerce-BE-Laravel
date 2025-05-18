@@ -46,10 +46,10 @@ final readonly class ShippingResolver
                 'shipping' => null,
             ];
         }
-        if ($order->user_id !== $user->id) {
+        if (Gate::denies('create', [$order])) {
             return [
                 'code' => 403,
-                'message' => 'You do not have permission to create shipping for this order',
+                'message' => 'You are not authorized to create shipping for this order',
                 'shipping' => null,
             ];
         }
@@ -135,6 +135,12 @@ final readonly class ShippingResolver
                 'message' => 'Shipping not found',
             ];
         }
+        if (Gate::denies('cancel', $shipping)) {
+            return [
+                'code' => 403,
+                'message' => 'You are not authorized to cancel this shipping',
+            ];
+        }
             $order = Order::find($shipping->order_id);
             if (!$order) {
                 return [
@@ -187,6 +193,62 @@ final readonly class ShippingResolver
             }
         }
         return $totalWeight;
+    }
+    public function updateShippingStatus($_, array $args)
+    {
+        $user = AuthService::Auth();
+        if (!$user) {
+            return [
+                'code' => 401,
+                'message' => 'Unauthorized',
+                'shipping' => null
+            ];
+        }
+        
+        $shipping = Shipping::find($args['shipping_id']);
+        if (!$shipping) {
+            return [
+                'code' => 404,
+                'message' => 'Shipping not found',
+                'shipping' => null
+            ];
+        }
+        
+        // Use policy for authorization
+        if (Gate::denies('update', $shipping)) {
+            return [
+                'code' => 403,
+                'message' => 'You are not authorized to update shipping status',
+                'shipping' => null
+            ];
+        }
+        
+        // Validate status
+        $validStatuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
+        if (!in_array($args['status'], $validStatuses)) {
+            return [
+                'code' => 400,
+                'message' => 'Invalid status value',
+                'shipping' => null
+            ];
+        }
+        
+        $shipping->status = $args['status'];
+        $shipping->save();
+        
+        if ($args['status'] === 'delivered') {
+            $order = Order::find($shipping->order_id);
+            if ($order) {
+                $order->status = 'delivered';
+                $order->save();
+            }
+        }
+        
+        return [
+            'code' => 200,
+            'message' => 'Shipping status updated successfully',
+            'shipping' => $shipping
+        ];
     }
 
 }

@@ -16,6 +16,7 @@ class Kernel extends HttpKernel
         \Illuminate\Routing\Middleware\SubstituteBindings::class,
         \Illuminate\Http\Middleware\SetCacheHeaders::class,
         \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
+        \Illuminate\Http\Middleware\HandleCors::class,
         // \Illuminate\Session\Middleware\StartSession::class,
         // \Illuminate\View\Middleware\ShareErrorsFromSession::class,
         // \Illuminate\Auth\Middleware\AuthenticateSession::class,

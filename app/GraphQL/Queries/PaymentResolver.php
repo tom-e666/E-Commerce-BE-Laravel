@@ -11,29 +11,39 @@ final readonly class PaymentResolver
     }
     public function getPayment($_, array $args)
     {
-        $orderId = $args['order_id'] ?? null;
-        if (!$orderId) {
+        $user = AuthService::Auth();
+        if (!$user) {
             return [
-                'code' => 400,
-                'message' => 'Order ID is required',
-                'payment' => null,
+                'code' => 401,
+                'message' => 'Unauthorized',
+                'payment' => null
             ];
         }
-
-        $payment = Payment::where('order_id', $orderId)->limit(1)->first();
-
+        
+        $payment = Payment::where('order_id', $args['order_id'])->first();
         if (!$payment) {
             return [
-            'code' => 404,
-            'message' => 'Payment not found',
-            'payment' => null,
+                'code' => 404,
+                'message' => 'Payment not found',
+                'payment' => null
             ];
         }
-
+        
+        // Use policy for authorization
+        if (Gate::denies('view', $payment)) {
+            return [
+                'code' => 403,
+                'message' => 'You are not authorized to view this payment',
+                'payment' => null
+            ];
+        }
+        
+        // Return payment details
         return [
             'code' => 200,
-            'message' => 'Payment found',
-            'payment' => $payment,
+            'message' => 'Success',
+            'payment' => $payment
         ];
     }
+    
 }
