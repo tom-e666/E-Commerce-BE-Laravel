@@ -21,13 +21,15 @@ class PaymentController extends Controller
     }
     public function callback(Request $request)
     {
-        $is_valid=$this->zalopayService->verifyCallback($request->all());
-        if($is_valid){
+        Log::info('ZaloPay Callback received', ['data' => $request->all()]);
+        
+        $isValid = $this->zalopayService->verifyCallback($request->all());
+        
+        if ($isValid) {
             return response()->json(['return_code' => 1, 'return_message' => 'success']);
-
         }
+        
         return response()->json(['return_code' => 0, 'return_message' => 'failed']);
-
     }
     public function paymentStatus($transactionId)
     {

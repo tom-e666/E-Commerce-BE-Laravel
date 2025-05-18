@@ -1,4 +1,7 @@
 <?php declare(strict_types=1);
+
+namespace App\GraphQL\Mutations;
+
 use App\Models\Order;
 use App\Services\AuthService;
 use App\Services\ZalopayService;
@@ -6,7 +9,6 @@ use App\GraphQL\Traits\GraphQLResponse;
 use App\Models\Payment;
 use App\Models\UserCredentail;
 
-namespace App\GraphQL\Mutations;
 
 final readonly class PaymentResolver
 {
