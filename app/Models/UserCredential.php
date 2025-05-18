@@ -13,6 +13,10 @@ class UserCredential extends Authenticatable implements JWTSubject
 {
     use HasApiTokens, HasFactory, Notifiable;
 
+    const ROLE_ADMIN ='admin';
+    const ROLE_USER ='user';
+    const ROLE_STAFF ='staff';
+    
     protected $table = 'user_credentials';
 
     protected $fillable = [
@@ -74,5 +78,13 @@ class UserCredential extends Authenticatable implements JWTSubject
     public function cartItems()
     {
         return $this->hasMany(CartItem::class, 'user_id', 'id');
+    }
+    public function isAdmin(): bool
+    {
+        return $this->role === self::ROLE_ADMIN;
+    }
+    public function isStaff(): bool
+    {
+        return $this->role === self::ROLE_STAFF;
     }
 }
