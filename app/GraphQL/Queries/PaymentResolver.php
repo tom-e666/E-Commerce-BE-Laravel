@@ -1,7 +1,7 @@
 <?php 
 namespace App\GraphQL\Queries;
 use App\GraphQL\Queries\PaymentResolver;
-
+use App\Models\Payment;
 final readonly class PaymentResolver
 {
     /** @param  array{}  $args */
@@ -35,6 +35,5 @@ final readonly class PaymentResolver
             'message' => 'Payment found',
             'payment' => $payment,
         ];
-
     }
 }

@@ -10,18 +10,17 @@ class Payment extends Model
     protected $fillable = [
         'order_id',
         'payment_method',
-        'payment_status',
+        'payment_status',// // 'pending', 'completed', 'failed'
         'transaction_id',
+        'amount',
+        'payment_time',
+
     ];
     protected $casts = [
-        'order_id'=>'String',
-        'payment_method'=>'String',
-        'payment_status'=>'String',
-        'transaction_id'=>'String',
+
     ];
     public function order()
     {
         return $this->belongsTo(Order::class, 'order_id', 'id');
     }
-    
 }

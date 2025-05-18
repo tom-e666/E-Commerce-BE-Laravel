@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use App\Models\UserCredentail;
+use App\Models\UserCredential;
 use App\Models\OrderItem;
 use App\Models\Shipping;
 
@@ -30,7 +30,7 @@ class Order extends Model
      */
     public function user(): BelongsTo
     {
-        return $this->belongsTo(UserCredentail::class);
+        return $this->belongsTo(UserCredential::class);
     }
 
     /**
@@ -43,5 +43,9 @@ class Order extends Model
     public function shipping(): HasOne
     {
         return $this->hasOne(Shipping::class);
+    }
+    public function payment(): HasOne
+    {
+        return $this->hasOne(Payment::class);
     }
 }

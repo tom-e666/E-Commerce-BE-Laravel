@@ -3,7 +3,7 @@ namespace App\Services;
 
 use App\Models\Order;
 use App\Models\Shipping;
-use App\Models\UserCredentail;
+use App\Models\UserCredential;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -21,145 +21,104 @@ class ZalopayService
         $this->key2 = env('ZALOPAY_KEY_2');
         $this->apiUrl = env('ZALOPAY_API_URL');
     }
-    public function createPaymentOrder($orderId)
+    public function createPaymentOrder($order, $callbackUrl, $returnUrl)
     {
-        $order = Order::with(['items.product', 'user'])->find($orderId);
-        if (!$order) {
-            return [
-                'code' => 404,
-                'message' => 'Order not found',
-                'payment_url' => null,
-            ];
-        }
+        $appTransId = $this->generateTransactionId();
+        $data = $this->preparePaymentData($order, $appTransId, $callbackUrl, $returnUrl);
         
-        $user = $order->user;
-        if (!$user) {
-            return [
-                'code' => 404,
-                'message' => 'User not found',
-                'payment_url' => null,
-            ];
-        }
-        try {
-            $appTransId = date('ymd') . '_' . substr(md5(uniqid()), 0, 10);
-
-            $itemsData = json_encode($order->items->map(function($item) {
+        return $this->sendRequest($this->apiUrl . '/create', $data);
+    }   
+    private function generateTransactionId()
+    {
+        return 'ZP' . time() . rand(1000, 9999);
+    }
+    private function preparePaymentData($order, $appTransId, $callbackUrl, $returnUrl)
+    {   
+        $totalWithShipping = $order->total_price;
+        if ($order->shipping && $order->shipping->shipping_fee > 0) {
+            $totalWithShipping += $order->shipping->shipping_fee;
+        }    
+        $data = [
+            'app_id' => $this->appId,
+            'app_trans_id' => $appTransId,
+            'app_user' => $order->user_id,
+            'app_time' => time(),
+            'amount' => $totalWithShipping,
+            'item' => json_encode($order->items->map(function($item) {
                 return [
                     'item_id' => $item->product_id,
                     'item_name' => $item->product->name,
                     'item_price' => $item->price,
                     'item_quantity' => $item->quantity,
                 ];
-            })->toArray());
-
-            $embedData = json_encode([
-                'redirecturl' => route('payment.callback'),
+            })->toArray()),
+            'description' => 'Order #' . $order->id,
+            'embed_data' => json_encode([
+                'redirecturl' => $returnUrl,
                 'order_id' => $order->id,
-                'customer_email' => $user->email,
-                'customer_phone' => $user->phone
-            ]);
-            
-            $data = [
-                'app_id' => $this->appId,
-                'app_trans_id' => $appTransId,
-                'app_user' => $user->id,
-                'app_time' => time(),
-                'amount' => $order->total_price,
-                'item' => $itemsData,
-                'description' => 'Laptop ECommerce - Thanh toán đơn hàng #' . $order->id,
-                'embed_data' => $embedData,
-                'bank_code' => 'zalopayapp',
-            ];
-            
-            $mac = hash_hmac(
-                'sha256', 
-                $data['app_id'] . "|" . 
-                $data['app_trans_id'] . "|" . 
-                $data['app_user'] . "|" . 
-                $data['amount'] . "|" . 
-                $data['app_time'] . "|" . 
-                $data['embed_data'] . "|" . 
-                $data['item'], 
-                $this->key1
-            );
-            
-            $data['mac'] = $mac;
-            
-            Log::info('ZaloPay API Request', ['data' => $data]);
-            
+                'customer_email' => $order->user->email??'',
+                'customer_phone' => $order->user->phone??'',
+            ]),
+            'bank_code' => 'zalopayapp',
+        ];
+        $mac = hash_hmac(
+            'sha256', 
+            $data['app_id'] . "|" . 
+            $data['app_trans_id'] . "|" . 
+            $data['app_user'] . "|" . 
+            $data['amount'] . "|" . 
+            $data['app_time'] . "|" . 
+            $data['embed_data'] . "|" . 
+            $data['item'], 
+            $this->key1
+        );
+        $data['mac'] = $mac;
+        return $data;
+    }
+
+    private function sendRequest($url, $data)
+    {
+        try {
             $response = Http::withHeaders([
                 'Content-Type' => 'application/json',
-            ])->post("{$this->apiUrl}/create", $data);
+            ])->post($url, $data);
             
-            $responseData = $response->json();
-            Log::info('ZaloPay API Response', ['response' => $responseData]);
-            
-            if ($response->successful() && isset($responseData['return_code']) && $responseData['return_code'] == 1) {
-                $order->payment_method = 'zalopay';
-                $order->payment_status = 'pending';
-                $order->payment_transaction_id = $appTransId;
-                $order->save();
-                
-                return [
-                    'code' => 200,
-                    'message' => 'Payment order created successfully',
-                    'payment_url' => $responseData['order_url'] ?? null,
-                    'transaction_id' => $appTransId,
-                    'data' => $responseData
-                ];
-            }
-            
-            return [
-                'code' => 400,
-                'message' => 'Failed to create payment: ' . ($responseData['return_message'] ?? 'Unknown error'),
-                'payment_url' => null,
-                'data' => $responseData
-            ];
-            
+            return $response->json();
         } catch (\Exception $e) {
             Log::error('ZaloPay API Error', ['error' => $e->getMessage()]);
             return [
-                'code' => 500,
-                'message' => 'Internal server error: ' . $e->getMessage(),
-                'payment_url' => null,
+                'return_code' => -1,
+                'return_message' => $e->getMessage()
             ];
         }
     }
-    
     public function verifyCallback($requestData)
     {
-        // Extract data from callback
         $data = $requestData['data'];
         $requestMac = $requestData['mac'];
         
-        // Calculate MAC for verification
         $mac = hash_hmac('sha256', $data, $this->key2);
         
         if ($mac !== $requestMac) {
             return false;
         }
         
-        // Data is verified, proceed with updating order
         $decodedData = json_decode(base64_decode($data), true);
         
-        // Extract app_trans_id from the callback data
         $appTransId = $decodedData['app_trans_id'] ?? '';
-        
-        // Find order by transaction_id
-        $order = Order::where('payment_transaction_id', $appTransId)->first();
-        
-        if ($order && $decodedData['status'] == 1) {
-            $order->payment_status = 'completed';
-            $order->status = 'paid';
-            $order->save();
-            
-            event(new \App\Events\OrderStatusChanged($order));
+        $payment = Payment::where('transaction_id', $appTransId)->first();
+        if (!$payment) {
+            return false;
+        }
+        if ($payment && $decodedData['status'] == 1) {
+            $payment->status = 'completed';
+            $payment->transaction_id = $decodedData['zp_trans_id'] ?? '';
+            $payment->save();   
+            event(new \App\Events\OrderStatusChanged($payment->order));
             return true;
         }
-        
         return false;
     }
-    
     public function getTransactionStatus($appTransId)
     {
         try {
@@ -168,7 +127,6 @@ class ZalopayService
                 'app_trans_id' => $appTransId,
             ];
             
-            // Calculate MAC
             $mac = hash_hmac('sha256', $data['app_id'] . "|" . $data['app_trans_id'], $this->key1);
             $data['mac'] = $mac;
             

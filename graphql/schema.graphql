@@ -343,15 +343,31 @@ extend type Mutation {
 # PAYMENT FEATURE
 #-----------------------------------------------
 # Types
+type Payment{
+  id: ID!
+  order_id: ID!
+  amount: Float!
+  payment_method: String!
+  payment_status: String!
+  created_at: String!
+  payment_time: String!
+  transaction_id: String
+}
+type PaymentResponse implements BaseResponse {
+  code: Int!
+  message: String!
+  payment: Payment
+}
 type PaymentCodResponse implements BaseResponse {
   code: Int!
   message: String!
+  transaction_id: String
 }
 type PaymentZalopayResponse implements BaseResponse {
   code: Int!
   message: String!
+  payment_url: String,
   transaction_id: String
-  payment_url: String
 }
 # Mutations
 extend type Mutation {
@@ -361,7 +377,6 @@ extend type Mutation {
   createPaymentCOD(
     order_id: String!
   ): PaymentCodResponse @field(resolver: "PaymentResolver@createPaymentCOD")
-
 }
 # Queries
 extend type Query {
@@ -492,14 +507,12 @@ extend type Query {
   getSupportTickets(user_id: ID, created_after: String, created_before: String, status: String): SupportTicketsResponse @field(resolver: "SupportTicketResolver@getSupportTickets")
   getSupportTicketResponses(ticket_id: ID): SupportTicketResponse @field(resolver: "SupportTicketResolver@getSupportTicketResponses")
 }
-
 # Mutations
 extend type Mutation {
   createSupportTicket(
     subject: String!
     message: String!
   ): SupportTicketResponse @field(resolver: "SupportTicketResolver@createSupportTicket")
-  
   updateSupportTicket(
     id: ID!
     subject: String
