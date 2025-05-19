@@ -8,27 +8,51 @@ class Review extends Model
 {
     protected $connection = 'mongodb';
     protected $collection = 'reviews';
+    protected $primaryKey = '_id';
     protected $fillable = [
         'product_id',
         'user_id',
         'rating',
         'comment',
+        'order_item_id',
     ];
     protected $casts = [
         'rating' => 'integer',
     ];
 
-    public function product()
+    /**
+     * Get product data through an accessor instead of a relationship
+     * This avoids cross-database relationship issues
+     */
+    public function getProductAttribute()
     {
-        return $this->belongsTo(Product::class, 'product_id', '_id');
+        return Product::find($this->product_id);
     }
 
-    public function user()
+    /**
+     * Get user data through an accessor instead of a relationship
+     * This avoids cross-database relationship issues
+     */
+    public function getUserAttribute()
     {
-        return $this->belongsTo(UserCredential::class, 'user_id', 'id');
+        return UserCredential::find($this->user_id);
     }
+    
+    /**
+     * Convert IDs to strings before storing in MongoDB
+     */
     public function setProductIdAttribute($value)
     {
         $this->attributes['product_id'] = (string)$value;
+    }
+    
+    public function setUserIdAttribute($value)
+    {
+        $this->attributes['user_id'] = (string)$value;
+    }
+    
+    public function setOrderItemIdAttribute($value)
+    {
+        $this->attributes['order_item_id'] = (string)$value;
     }
 }

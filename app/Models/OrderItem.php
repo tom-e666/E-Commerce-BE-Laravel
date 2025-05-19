@@ -18,6 +18,7 @@ class OrderItem extends Model
     protected $casts = [
         'price' => 'float',
         'options' => 'array',
+        'product_id' => 'string',  // Important for MongoDB ID compatibility
     ];
 
 
@@ -29,5 +30,29 @@ class OrderItem extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+    
+    /**
+     * Get product details from MongoDB
+     */
+    public function getProductDetailsAttribute()
+    {
+        // Get MongoDB product details
+        if ($this->product) {
+            return ProductDetail::where('product_id', (string)$this->product_id)->first();
+        }
+        return null;
+    }
+    
+    /**
+     * Get main product image
+     */
+    public function getImageAttribute()
+    {
+        $details = $this->getProductDetailsAttribute();
+        if ($details && !empty($details->images)) {
+            return $details->images[0];
+        }
+        return null;
     }
 }

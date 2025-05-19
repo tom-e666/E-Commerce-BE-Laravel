@@ -5,6 +5,9 @@ use App\Models\UserCredential;
 use App\Services\AuthService;
 use App\GraphQL\Traits\GraphQLResponse;
 use Tymon\JWTAuth\Facades\JWTAuth;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Validator;
+
 final readonly class UserCredentialResolver{
     use GraphQLResponse;
     /** @param  array{}  $args */
@@ -50,18 +53,11 @@ final readonly class UserCredentialResolver{
                   ->orWhere('phone', 'like', "%$search%");
             });
         }
-        
-        // Pagination
-        $page = $args['page'] ?? 1;
-        $perPage = $args['per_page'] ?? 15;
-        
         $users = $query->paginate($perPage, ['*'], 'page', $page);
         
         return $this->success([
             'users' => $users->items(),
             'total' => $users->total(),
-            'current_page' => $users->currentPage(),
-            'per_page' => $users->perPage(),
         ], 'Users retrieved successfully', 200);
     }
     public function getUser($_, array $args)

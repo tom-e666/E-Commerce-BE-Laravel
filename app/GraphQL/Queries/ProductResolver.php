@@ -31,8 +31,9 @@ final class ProductResolver
             if (isset($args['status'])) {
                 if ($args['status'] === 'all') {
                     $user = AuthService::Auth();
-                    // Only admin/staff can see all products including inactive
-                    if (!$user || (!$user->isAdmin() && !$user->isStaff())) {
+                    
+                    // Check if user can view all products including inactive using policy
+                    if (!$user || Gate::denies('viewAny', Product::class)) {
                         $query->where('status', true);
                     }
                 } else {
@@ -42,7 +43,38 @@ final class ProductResolver
                 $query->where('status', true);
             }
             
-            $products = $query->with('details')->get();
+            // Apply category filter if provided
+            if (isset($args['category_id']) && !empty($args['category_id'])) {
+                $query->where('category_id', $args['category_id']);
+            }
+            
+            // Apply brand filter if provided
+            if (isset($args['brand_id']) && !empty($args['brand_id'])) {
+                $query->where('brand_id', $args['brand_id']);
+            }
+            
+            // Apply price range filter if provided
+            if (isset($args['price_min'])) {
+                $query->where('price', '>=', $args['price_min']);
+            }
+            
+            if (isset($args['price_max'])) {
+                $query->where('price', '<=', $args['price_max']);
+            }
+            
+            
+            // Validate sort direction
+            
+            // Get products with sorting
+            $products = $query->get();
+            
+            // Filter products based on view policy
+            $user = AuthService::Auth();
+            if ($user) {
+                $products = $products->filter(function ($product) use ($user) {
+                    return Gate::allows('view', $product);
+                });
+            }
             
             $formattedProducts = $products->map(function ($product) {
                 return $this->formatProductResponse($product);
@@ -50,7 +82,7 @@ final class ProductResolver
             
             return $this->success([
                 'products' => $formattedProducts,
-                'total' => $products->count(),
+                'total' => $formattedProducts->count(),
             ], 'Success', 200);
         } catch (\Exception $e) {
             return $this->error('Failed to fetch products: ' . $e->getMessage(), 500);
@@ -71,17 +103,17 @@ final class ProductResolver
                 return $this->error('id is required', 400);
             }
             
-            $product = Product::with('details')->find($args['id']);
+            $product = Product::with(['details', 'category', 'brand'])->find($args['id']);
             
             if ($product === null) {
                 return $this->error('Product not found', 404);
             }
             
-            // Check if product is inactive and if user can view it
+            // Check if user can view the product using policy
             if (!$product->status) {
                 $user = AuthService::Auth();
                 
-                if (!$user || (!$user->isAdmin() && !$user->isStaff())) {
+                if (!$user || Gate::denies('view', $product)) {
                     return $this->error('Product not available', 404);
                 }
             }
@@ -109,17 +141,24 @@ final class ProductResolver
             $request = new Request($args);
             $productQuery = new ProductQuery();
             
-            // Check if user can view inactive products
+            // Check if user can view inactive products using policy
             $user = AuthService::Auth();
-            $canViewInactive = $user && ($user->isAdmin() || $user->isStaff());
+            $canViewInactive = $user && Gate::allows('viewAny', Product::class);
             
-            // Set default status filter if not provided and user isn't admin/staff
+            // Set default status filter if not provided and user doesn't have appropriate permission
             if (!isset($args['status']) && !$canViewInactive) {
                 $request->merge(['status' => 'active']);
             }
             
             $products = $productQuery->paginate($request);
             $totalProducts = $productQuery->getTotalCount();
+            
+            // Apply policy filter for paginated results if necessary
+            if ($user && !$canViewInactive) {
+                $products = $products->filter(function ($product) use ($user) {
+                    return Gate::allows('view', $product);
+                });
+            }
             
             $formattedProducts = $products->map(function ($product) {
                 return $this->formatProductResponse($product);
@@ -130,9 +169,137 @@ final class ProductResolver
                 'total' => $totalProducts,
                 'current_page' => $args['page'] ?? 1,
                 'per_page' => $args['per_page'] ?? 10,
+                'last_page' => ceil($totalProducts / ($args['per_page'] ?? 10)),
             ], 'Success', 200);
         } catch (\Exception $e) {
             return $this->error('Failed to fetch paginated products: ' . $e->getMessage(), 500);
+        }
+    }
+    
+    /**
+     * Search products with advanced filters and full-text search
+     *
+     * @param mixed $_ Root value (not used)
+     * @param array $args Query arguments
+     * @return array Response with search results or error
+     */
+    public function searchProducts($_, array $args): array
+    {
+        try {
+            $query = Product::query();
+            
+            // Apply search term if provided
+            if (isset($args['search']) && !empty($args['search'])) {
+                $searchTerm = $args['search'];
+                $query->where(function($q) use ($searchTerm) {
+                    $q->where('name', 'like', "%{$searchTerm}%")
+                      ->orWhereHas('details', function($q) use ($searchTerm) {
+                          $q->where('description', 'like', "%{$searchTerm}%")
+                            ->orWhere('specifications', 'like', "%{$searchTerm}%")
+                            ->orWhere('keywords', 'like', "%{$searchTerm}%");
+                      });
+                });
+            }
+            
+            // Only show active products for regular users
+            $user = AuthService::Auth();
+            if (!$user || Gate::denies('viewAny', Product::class)) {
+                $query->where('status', true);
+            }
+            
+            // Apply other filters from getProducts method
+            if (isset($args['category_id']) && !empty($args['category_id'])) {
+                $query->where('category_id', $args['category_id']);
+            }
+            
+            if (isset($args['brand_id']) && !empty($args['brand_id'])) {
+                $query->where('brand_id', $args['brand_id']);
+            }
+            
+            if (isset($args['price_min'])) {
+                $query->where('price', '>=', $args['price_min']);
+            }
+            
+            if (isset($args['price_max'])) {
+                $query->where('price', '<=', $args['price_max']);
+            }
+            
+            // Apply sorting
+            $sortField = $args['sort_field'] ?? 'created_at';
+            $sortDirection = $args['sort_direction'] ?? 'desc';
+            
+            // Validate sort field to prevent SQL injection
+            $allowedSortFields = ['name', 'price', 'created_at', 'stock'];
+            if (!in_array($sortField, $allowedSortFields)) {
+                $sortField = 'created_at';
+            }
+            
+            // Validate sort direction
+            $sortDirection = strtolower($sortDirection) === 'asc' ? 'asc' : 'desc';
+            $query->orderBy($sortField, $sortDirection);
+            
+            // Apply pagination
+            $page = $args['page'] ?? 1;
+            $perPage = $args['per_page'] ?? 10;
+            $products = $query->with('details', 'category', 'brand')
+                             ->paginate($perPage, ['*'], 'page', $page);
+            
+            $formattedProducts = collect($products->items())->map(function ($product) {
+                return $this->formatProductResponse($product);
+            });
+            
+            return $this->success([
+                'products' => $formattedProducts,
+                'total' => $products->total(),
+                'current_page' => $products->currentPage(),
+                'per_page' => $products->perPage(),
+                'last_page' => $products->lastPage(),
+            ], 'Success', 200);
+        } catch (\Exception $e) {
+            return $this->error('Failed to search products: ' . $e->getMessage(), 500);
+        }
+    }
+    
+    /**
+     * Get related products
+     *
+     * @param mixed $_ Root value (not used)
+     * @param array $args Query arguments
+     * @return array Response with related products or error
+     */
+    public function getRelatedProducts($_, array $args): array
+    {
+        try {
+            if (!isset($args['product_id'])) {
+                return $this->error('product_id is required', 400);
+            }
+            
+            $product = Product::find($args['product_id']);
+            if (!$product) {
+                return $this->error('Product not found', 404);
+            }
+            
+            // Find products in the same category
+            $query = Product::where('id', '!=', $product->id)
+                          ->where('status', true)
+                          ->where('category_id', $product->category_id);
+                          
+            // Limit results
+            $limit = $args['limit'] ?? 5;
+            $relatedProducts = $query->with('details')
+                                   ->inRandomOrder()
+                                   ->limit($limit)
+                                   ->get();
+            
+            $formattedProducts = $relatedProducts->map(function ($product) {
+                return $this->formatProductResponse($product);
+            });
+            
+            return $this->success([
+                'products' => $formattedProducts,
+            ], 'Success', 200);
+        } catch (\Exception $e) {
+            return $this->error('Failed to fetch related products: ' . $e->getMessage(), 500);
         }
     }
     
@@ -146,19 +313,40 @@ final class ProductResolver
     {
         $productDetail = $product->details;
         
-        return [
+        $result = [
             'id' => $product->id,
             'name' => $product->name,
             'price' => (float) $product->price,
             'stock' => (int) $product->stock,
             'status' => (bool) $product->status,
             'brand_id' => $product->brand_id,
-            'details' => $productDetail ? [
+            'category_id' => $product->category_id,
+            'created_at' => $product->created_at,
+            'updated_at' => $product->updated_at,
+        ];
+        
+        // Add brand name if brand is loaded
+        if ($product->relationLoaded('brand') && $product->brand) {
+            $result['brand_name'] = $product->brand->name;
+        }
+        
+        // Add category name if category is loaded
+        if ($product->relationLoaded('category') && $product->category) {
+            $result['category_name'] = $product->category->name;
+        }
+        
+        // Add product details if available
+        if ($productDetail) {
+            $result['details'] = [
                 'description' => $productDetail->description,
                 'specifications' => $productDetail->specifications,
-                'images' => $productDetail->images,
+                'images' => $productDetail->images ? $productDetail->images[0] : null,
                 'keywords' => $productDetail->keywords,
-            ] : null,
-        ];
+            ];
+        } else {
+            $result['details'] = null;
+        }
+        
+        return $result;
     }
 }

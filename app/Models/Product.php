@@ -1,16 +1,20 @@
 <?php
 
 namespace App\Models;
-use App\Models\UserCredential;
 use App\Models\ProductDetail;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Brand;
+use App\Models\Review;
 
 class Product extends Model
 {
     use HasFactory;
     
-    protected $fillable =[
+    protected $fillable = [
         'name',
         'price',
         'stock',
@@ -26,41 +30,44 @@ class Product extends Model
 
     protected $appends = ['details'];
 
+    /**
+     * Get product details from MongoDB
+     */
     public function getDetailsAttribute()
     {
-        return ProductDetail::where('product_id', $this->id)->first();
+        return ProductDetail::where('product_id', (string)$this->id)->first();
     }
 
-    public function details()
-    {
-        return $this->hasOne(ProductDetail::class, 'product_id', 'id');
-    }
-
+    /**
+     * Get MySQL relationship
+     */
     public function brand()
     {
-        return $this->belongsTo(Brand::class, 'brand_id', 'id');
+        return $this->belongsTo(Brand::class);
     }
 
+    /**
+     * Get the primary image for the product
+     */
+    public function getImageAttribute()
+    {
+        $details = $this->details;
+        return ($details && !empty($details->images)) ? $details->images[0] : null;
+    }
+    
+    /**
+     * Format product details for cart/order display
+     */
     public function labelDetail()
     {
         $details = $this->details;
         
-        if (!$details) {
-            return [
-                'product_id' => $this->id,
-                'images' => null,
-                'price' => $this->price,
-                'stock' => $this->stock,
-                'status' => $this->status,
-            ];
-        }
-        
         return [
-            'product_id' => $this->id,
-            'images' => $details->images && count($details->images) > 0 ? $details->images[0] : null,
-            'price' => $this->price,
-            'stock' => $this->stock,
-            'status' => $this->status,
+            'product_id' => (string)$this->id,
+            'images' => ($details && !empty($details->images)) ? $details->images[0] : null,
+            'price' => (float)$this->price,
+            'stock' => (int)$this->stock,
+            'status' => (bool)$this->status,
         ];
     }
 }

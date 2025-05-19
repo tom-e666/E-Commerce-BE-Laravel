@@ -4,6 +4,10 @@ namespace App\GraphQL\Mutations;
 use App\Models\UserCredential;
 use App\Services\AuthService;
 use App\GraphQL\Traits\GraphQLResponse;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Hash;
+
 final readonly class UserCredentialResolver{
 
     use GraphQLResponse;
@@ -134,4 +138,32 @@ final readonly class UserCredentialResolver{
     
     return $this->success([], 'Verification link sent', 200);
 }
+    public function deleteUser($_, array $args)
+    {
+        $user = AuthService::Auth();
+        if (!$user) {
+            return $this->error('Unauthorized', 401);
+        }
+        
+        if (Gate::denies('delete', $user)) {
+            return $this->error('You are not authorized to delete this user', 403);
+        }
+        
+        $validator = Validator::make($args, [
+            'user_id' => 'required|exists:user_credentials,id',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->error($validator->errors()->first(), 400);
+        }
+        
+        $targetUser = UserCredential::find($args['user_id']);
+        if ($targetUser->isAdmin()) {
+            return $this->error('Cannot delete an admin user', 400);
+        }
+        
+        $targetUser->delete();
+        
+        return $this->success([], 'User deleted successfully', 200);
+    }
 }

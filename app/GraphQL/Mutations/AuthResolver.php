@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\GraphQL\Mutations;
 
 use App\Models\UserCredential;
+use App\Services\AuthService;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\JWT;
@@ -163,17 +164,31 @@ final readonly class AuthResolver
         }
     }
 
-    public function someProtectedMethod($_, array $args)
+    public function sendVerificationEmail($_, $args)
     {
-        // Get the authenticated user
-        $user = auth('api')->user();
-        
-        // Check if user is authenticated
+        $user = AuthService::Auth();
         if (!$user) {
-            return $this->error('Unauthorized. Authentication required.', 401);
+            return $this->error('Unauthorized', 401);
         }
-        
-        // Continue with the authenticated logic
-        // ...
+        return $this->success([
+            'user' => $user,
+        ], 'Verification email sent successfully', 200);
+    }
+    public function verifyEmail($_, $args)
+    {
+        $user = AuthService::Auth();
+        if (!$user) {
+            return $this->error('Unauthorized', 401);
+        }
+        if ($user->email_verified) {
+            return $this->error('Email already verified', 422);
+        }
+        // Verify the email address
+        $user->email_verified = true;
+        $user->save();
+
+        return $this->success([
+            'user' => $user,
+        ], 'Email verified successfully', 200);
     }
 }

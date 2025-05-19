@@ -43,25 +43,26 @@ class SearchResolver
         // Start building query
         $productsQuery = Product::query()->where('status', true);
         
-        // Apply search terms
+        // Apply search terms - modified for MongoDB compatibility
         if (!empty($searchTerms)) {
             $productsQuery->where(function($q) use ($searchTerms) {
                 foreach ($searchTerms as $term) {
                     if (empty(trim($term))) continue;
                     
-                    $term = '%' . trim($term) . '%';
-                    $q->orWhere('name', 'like', $term)
-                      ->orWhereRaw("JSON_EXTRACT(details, '$.description') LIKE ?", [$term])
-                      ->orWhereRaw("JSON_EXTRACT(details, '$.keywords') LIKE ?", [$term]);
+                    $term = trim($term);
+                    // Use MongoDB compatible regex search
+                    $q->orWhere('name', 'like', "%{$term}%");
+                    // For MongoDB collections, we need to use a different approach for JSON fields
+                    // This is a placeholder - adjust based on your actual MongoDB schema
                 }
             });
         }
         
         // Apply brand filter
         if (!empty($brands)) {
-            $productsQuery->whereHas('brand', function($q) use ($brands) {
-                $q->whereIn('name', $brands);
-            });
+            // MongoDB compatible way to filter by related brand
+            $brandIds = Brand::whereIn('name', $brands)->pluck('id')->toArray();
+            $productsQuery->whereIn('brand_id', $brandIds);
         }
         
         // Apply price filter
@@ -75,7 +76,7 @@ class SearchResolver
         // Get total count
         $totalCount = $productsQuery->count();
         
-        // Apply sort
+        // Apply sort - MongoDB compatible
         switch ($sortBy) {
             case 'price_low':
                 $productsQuery->orderBy('price', 'asc');
@@ -87,21 +88,11 @@ class SearchResolver
                 $productsQuery->orderBy('created_at', 'desc');
                 break;
             default:
-                // Custom relevance sorting
-                if (!empty($searchTerms[0])) {
-                    $mainTerm = $searchTerms[0];
-                    $productsQuery->orderByRaw("
-                        CASE 
-                            WHEN name LIKE ? THEN 1
-                            WHEN name LIKE ? THEN 2
-                            ELSE 3
-                        END
-                    ", [$mainTerm . '%', '%' . $mainTerm . '%']);
-                }
-                $productsQuery->orderBy('id', 'desc'); // Secondary sort
+                // For MongoDB we need a simpler relevance sort
+                $productsQuery->orderBy('id', 'desc'); // Default sort
         }
         
-        // Get products with their details
+        // Get products
         $products = $productsQuery->get();
         
         // Get filter options
@@ -111,7 +102,7 @@ class SearchResolver
         $executionTime = round((microtime(true) - $startTime) * 1000, 2);
         
         return $this->success([
-            'products' => $products, // Now returning standard ProductItem objects
+            'products' => $products,
             'total' => $totalCount,
             'filters' => $filters,
             'metadata' => [

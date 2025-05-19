@@ -11,7 +11,7 @@ use App\Services\AuthService;
 use App\GraphQL\Traits\GraphQLResponse;
 use App\Models\UserCredentail;
 use App\Models\OrderItem;
-use App\Services\GHNService;
+
 class GHNService
 {
     protected $apiUrl;
@@ -198,4 +198,3 @@ public function getProvinces()
         }
     }
 }
-    

@@ -5,6 +5,7 @@ namespace App\GraphQL\Queries;
 use App\Models\CartItem;
 use App\GraphQL\Traits\GraphQLResponse;
 use App\Services\AuthService;
+use Illuminate\Support\Facades\Gate;
 
 final class CartItemResolver
 {
@@ -24,13 +25,29 @@ final class CartItemResolver
             return $this->error('Unauthorized', 401);
         }
         
-        $cartItems = CartItem::where('user_id', $user->id)
+        // Check if user is viewing their own cart or has admin/staff privileges
+        if (isset($args['user_id']) && $args['user_id'] !== $user->id) {
+            // If user is trying to view someone else's cart, check viewAny policy
+            if (Gate::denies('viewAny', CartItem::class)) {
+                return $this->error('You are not authorized to view other users\' cart items', 403);
+            }
+            $userId = $args['user_id'];
+        } else {
+            $userId = $user->id;
+        }
+        
+        $cartItems = CartItem::where('user_id', $userId)
             ->select('id', 'product_id', 'quantity', 'updated_at') 
             ->with(['product' => function($query) {
                 $query->with('details'); // Eager load product details
             }])
             ->orderBy('updated_at', 'desc')
             ->get();
+        
+        // Filter out items the user doesn't have permission to view
+        $cartItems = $cartItems->filter(function($item) {
+            return Gate::allows('view', $item);
+        });
         
         if ($cartItems->isEmpty()) {
             return $this->success([
@@ -79,9 +96,25 @@ final class CartItemResolver
             return $this->error('Unauthorized', 401);
         }
         
-        $cartItems = CartItem::where('user_id', $user->id)
+        // Check if user is getting summary for their own cart or has admin/staff privileges
+        if (isset($args['user_id']) && $args['user_id'] !== $user->id) {
+            // If user is trying to view someone else's cart summary, check viewAny policy
+            if (Gate::denies('viewAny', CartItem::class)) {
+                return $this->error('You are not authorized to view other users\' cart summary', 403);
+            }
+            $userId = $args['user_id'];
+        } else {
+            $userId = $user->id;
+        }
+        
+        $cartItems = CartItem::where('user_id', $userId)
             ->with('product')
             ->get();
+        
+        // Filter out items the user doesn't have permission to view
+        $cartItems = $cartItems->filter(function($item) {
+            return Gate::allows('view', $item);
+        });
         
         $totalItems = $cartItems->sum('quantity');
         $subtotal = $cartItems->sum(function($item) {
@@ -92,6 +125,62 @@ final class CartItemResolver
             'total_items' => $totalItems,
             'subtotal' => $subtotal,
             'item_count' => $cartItems->count()
+        ], 'Success', 200);
+    }
+    
+    /**
+     * Get a specific cart item
+     * 
+     * @param mixed $_ Root value (not used)
+     * @param array $args Query arguments
+     * @return array Response with cart item or error
+     */
+    public function getCartItem($_, array $args)
+    {
+        if (!isset($args['cart_item_id'])) {
+            return $this->error('cart_item_id is required', 400);
+        }
+        
+        $user = AuthService::Auth();
+        if (!$user) {
+            return $this->error('Unauthorized', 401);
+        }
+        
+        $cartItem = CartItem::with(['product' => function($query) {
+                $query->with('details');
+            }])
+            ->find($args['cart_item_id']);
+        
+        if (!$cartItem) {
+            return $this->error('Cart item not found', 404);
+        }
+        
+        // Check if user is authorized to view this cart item
+        if (Gate::denies('view', $cartItem)) {
+            return $this->error('You are not authorized to view this cart item', 403);
+        }
+        
+        if (!$cartItem->product) {
+            return $this->error('Associated product not found', 404);
+        }
+        
+        $formattedCartItem = [
+            'id' => $cartItem->id,
+            'quantity' => $cartItem->quantity,
+            'product' => [
+                'product_id' => $cartItem->product->id,
+                'name' => $cartItem->product->name,
+                'price' => (float)$cartItem->product->price,
+                'stock' => (int)$cartItem->product->stock,
+                'status' => (bool)$cartItem->product->status,
+                'image' => $cartItem->product->details && !empty($cartItem->product->details->images) 
+                    ? $cartItem->product->details->images[0] 
+                    : null,
+            ],
+        ];
+        
+        return $this->success([
+            'cart_item' => $formattedCartItem,
         ], 'Success', 200);
     }
 }

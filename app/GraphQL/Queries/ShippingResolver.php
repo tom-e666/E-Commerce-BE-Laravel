@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Log;
 use App\Models\Order;
 use App\Models\UserCredentail;
 use App\Models\OrderItem;
+use Illuminate\Support\Facades\Gate;
 final readonly class ShippingResolver
 {
     protected GHNService $ghnService;

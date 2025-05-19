@@ -7,7 +7,7 @@ use MongoDB\Laravel\Eloquent\Model;
 class ProductDetail extends Model
 {
     protected $connection = 'mongodb';
-    protected $table = 'product_detail';
+    protected $collection = 'product_details';
     protected $fillable = [
         'product_id',
         'description',
@@ -16,25 +16,36 @@ class ProductDetail extends Model
         'specifications',
     ];
     protected $casts = [
-        'description' => 'string',
         'images' => 'array',
         'keywords' => 'array',
         'specifications' => 'array',
     ];
-    public function product()
+    
+    /**
+     * Get product data through an accessor instead of a relationship
+     * This avoids cross-database relationship issues
+     */
+    public function getProductAttribute()
     {
-        return $this->belongsTo(Product::class, 'product_id', 'id');
+        return Product::find($this->product_id);
     }
-    public function reviews()
+    
+    /**
+     * Get recent reviews manually instead of through relationship
+     */
+    public function getRecentReviewsAttribute($amount = 5)
     {
-        return $this->hasMany(Review::class, 'product_detail_id', 'id');
-    }
-    public function recentReviews($amount = 5)
-    {
-        return $this->reviews()
+        return Review::where('product_id', $this->product_id)
             ->orderBy('created_at', 'desc')
             ->limit($amount)
             ->get();
     }
-
+    
+    /**
+     * Convert IDs to strings before storing in MongoDB
+     */
+    public function setProductIdAttribute($value)
+    {
+        $this->attributes['product_id'] = (string)$value;
+    }
 }

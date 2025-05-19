@@ -7,6 +7,7 @@ use App\GraphQL\Traits\GraphQLResponse;
 use App\Models\Order;
 use App\Services\AuthService;
 use App\Services\GHNService;
+use Illuminate\Support\Facades\Gate;
 
 final readonly class ShippingResolver
 {

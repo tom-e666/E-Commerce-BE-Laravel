@@ -16,6 +16,14 @@ use App\Policies\ProductPolicy;
 use App\Policies\ShippingPolicy;
 use App\Policies\SupportTicketPolicy;
 use App\Policies\ReviewPolicy;
+use App\Policies\BrandPolicy;
+use App\Policies\UserCredentialPolicy;
+use App\Policies\MetricsPolicy;
+use App\Models\Brand;
+use App\Models\UserCredential;
+use App\Models\Metrics;
+use App\Policies\CartItemPolicy;
+use App\Models\CartItem;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -33,6 +41,7 @@ class AuthServiceProvider extends ServiceProvider
         Review::class => ReviewPolicy::class,
         Brand::class => BrandPolicy::class,
         UserCredential::class => UserCredentialPolicy::class,
+        CartItem::class => CartItemPolicy::class,
         'App\Models\Metrics' => MetricsPolicy::class
     ];
 

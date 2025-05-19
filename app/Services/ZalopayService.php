@@ -139,20 +139,18 @@ private function preparePaymentData($order, $appTransId, $callbackUrl, $returnUr
                 'app_trans_id' => $appTransId,
             ];
             
-            $mac = hash_hmac('sha256', $data['app_id'] . "|" . $data['app_trans_id'], $this->key1);
+            $mac = hash_hmac('sha256', $this->appId . "|" . $appTransId . "|" . $this->key1, $this->key1);
+            
             $data['mac'] = $mac;
             
-            $response = Http::withHeaders([
-                'Content-Type' => 'application/json',
-            ])->post("{$this->apiUrl}/query", $data);
+            $response = Http::post("{$this->apiUrl}/query", $data);
             
             return $response->json();
-            
         } catch (\Exception $e) {
-            Log::error('ZaloPay Query Error', ['error' => $e->getMessage()]);
+            Log::error('ZaloPay API Error - getTransactionStatus: ' . $e->getMessage());
             return [
                 'return_code' => -1,
-                'return_message' => $e->getMessage()
+                'return_message' => 'Failed to get transaction status: ' . $e->getMessage()
             ];
         }
     }

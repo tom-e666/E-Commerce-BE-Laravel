@@ -68,16 +68,13 @@ input UserLogInput {
 # Queries
 extend type Query {
   getUserByJWT: UserResponse @field(resolver: "AuthResolver@getUserByJWT") @guard(with: ["api"])
-getUserCredential: UserResponse @field(resolver: "UserCredentialResolver@getUserCredential") @guard(with: ["api"])
-updateUserInfo(...): UserResponse @field(resolver: "UserCredentialResolver@updateUserInfo") @guard(with: ["api"])
-changePassword(...): Response @field(resolver: "UserCredentialResolver@changePassword") @guard(with: ["api"])
+  getUserCredential: UserResponse @field(resolver: "UserCredentialResolver@getUserCredential") @guard(with: ["api"])
 
 
 getAllUsers(
     role: String
     search: String
-    page: Int
-    per_page: Int
+
   ): UsersResponse 
     @field(resolver: "UserCredentialResolver@getAllUsers") 
     @guard(with: ["api"]) 
@@ -86,9 +83,6 @@ getAllUsers(
     @guard(with: ["api"])
   
 }
-
-
-
 # Mutations
 extend type Mutation {
   signup(
@@ -101,7 +95,7 @@ extend type Mutation {
   login(
     email: String!
     password: String!
-  ): AuthPayload! @field(resolver: "AuthResolver@login") @middleware(checks:["auth.throttle"])
+  ): AuthPayload! @field(resolver: "AuthResolver@login")
 
   logout(refresh_token: String!): Response! @field(resolver: "AuthResolver@logout")
   refreshToken(refresh_token: String!): AuthPayload! @field(resolver: "AuthResolver@refreshToken")
@@ -701,8 +695,8 @@ type ReviewsResponse implements BaseResponse {
 extend type Query {
   # USER: Can view own reviews
   # ADMIN/STAFF: Can view all user reviews
-  getReviewsByUser: ReviewsResponse 
-    @field(resolver: "ReviewResolver@getReviewsByUser") 
+  getUserReviews: ReviewsResponse 
+    @field(resolver: "ReviewResolver@getUserReviews") 
     @guard(with: ["api"])
   
   # ADMIN/STAFF: Can get reviews filtered by user ID
@@ -711,8 +705,8 @@ extend type Query {
     @guard(with: ["api"]) 
   
   # PUBLIC ENDPOINT - View product reviews
-  getReviewsByProduct(product_id: ID!, limit: Int, page: Int): ReviewsResponse 
-    @field(resolver: "ReviewResolver@getReviewsByProduct")
+  getProductReviews(product_id: ID!): ReviewsResponse 
+    @field(resolver: "ReviewResolver@getProductReviews")
 }
 
 # Mutations

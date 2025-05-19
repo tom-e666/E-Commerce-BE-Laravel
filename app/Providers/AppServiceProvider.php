@@ -6,6 +6,7 @@ use Illuminate\Support\ServiceProvider;
 use App\Services\GHNService;
 use App\Services\ZalopayService;
 use App\Services\EmailVefificationService;
+use Illuminate\Support\Facades\Config;
 class AppServiceProvider extends ServiceProvider
 {
     /**

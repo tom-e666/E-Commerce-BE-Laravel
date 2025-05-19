@@ -7,6 +7,7 @@ use App\Models\Product;
 use Illuminate\Support\Facades\Validator;
 use App\GraphQL\Traits\GraphQLResponse;
 use App\Services\AuthService;
+use Illuminate\Support\Facades\Gate;
 
 final class CartItemResolver
 {
@@ -50,11 +51,21 @@ final class CartItemResolver
         $cartItem = CartItem::where('user_id', $user->id)
                            ->where('product_id', $args['product_id'])
                            ->first();
-                           
+        
         if ($cartItem) {
+            // Check update permission using policy
+            if (Gate::denies('update', $cartItem)) {
+                return $this->error('You are not authorized to update this cart item', 403);
+            }
+            
             $cartItem->quantity = $args['quantity'];
             $cartItem->save();
         } else {
+            // Check create permission using policy
+            if (Gate::denies('update', CartItem::class)) {
+                return $this->error('You are not authorized to create cart items', 403);
+            }
+            
             $cartItem = CartItem::create([
                 'user_id' => $user->id,
                 'product_id' => $args['product_id'],
@@ -96,6 +107,11 @@ final class CartItemResolver
             return $this->error('Cart item not found', 404);
         }
         
+        // Check delete permission using policy
+        if (Gate::denies('delete', $cartItem)) {
+            return $this->error('You are not authorized to delete this cart item', 403);
+        }
+        
         $cartItem->delete();
         
         return $this->success([], 'Cart item removed successfully', 200);
@@ -109,6 +125,11 @@ final class CartItemResolver
         $user = AuthService::Auth();
         if (!$user) {
             return $this->error('Unauthorized', 401);
+        }
+        
+        // Check clear permission using policy
+        if (Gate::denies('clear', CartItem::class)) {
+            return $this->error('You are not authorized to clear your cart', 403);
         }
         
         CartItem::where('user_id', $user->id)->delete();
@@ -128,13 +149,19 @@ final class CartItemResolver
         
         $cartItems = CartItem::where('user_id', $user->id)
                            ->with('product')
-                           ->get()
-                           ->map(function($item) {
-                               return $this->formatCartItemResponse($item);
-                           });
+                           ->get();
+        
+        // Filter out items the user doesn't have permission to view
+        $cartItems = $cartItems->filter(function($item) use ($user) {
+            return Gate::allows('view', $item);
+        });
+        
+        $formattedItems = $cartItems->map(function($item) {
+            return $this->formatCartItemResponse($item);
+        });
         
         return $this->success([
-            'cart_items' => $cartItems,
+            'cart_items' => $formattedItems,
         ], 'Success', 200);
     }
     

@@ -3,9 +3,11 @@
 namespace App\GraphQL\Mutations;
 
 use App\Models\Brand;
+use App\Models\Product;
 use Illuminate\Support\Facades\Validator;
 use App\GraphQL\Traits\GraphQLResponse;
 use App\Services\AuthService;
+use Illuminate\Support\Facades\Gate;
 
 final readonly class BrandResolver
 {
