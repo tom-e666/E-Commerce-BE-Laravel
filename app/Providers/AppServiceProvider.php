@@ -5,7 +5,7 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 use App\Services\GHNService;
 use App\Services\ZalopayService;
-
+use App\Services\EmailVefificationService;
 class AppServiceProvider extends ServiceProvider
 {
     /**
@@ -19,6 +19,10 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(ZalopayService::class, function ($app) {
             return new ZalopayService();
         });
+        $this->app->singleton(EmailVerificationService::class, function ($app) {
+            return new EmailVerificationService();
+        });
+        Config::set('app.frontend_url', env('FRONTEND_URL', env('APP_URL')));
     }
     /**
      * Bootstrap any application services.

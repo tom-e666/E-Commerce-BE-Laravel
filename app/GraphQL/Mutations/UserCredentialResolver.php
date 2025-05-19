@@ -118,4 +118,20 @@ final readonly class UserCredentialResolver{
             'user' => $targetUser,
         ], 'User role updated successfully', 200);
     }
+    public function resendVerification($_, array $args)
+{
+    $user = AuthService::Auth();
+    
+    if (!$user) {
+        return $this->error('Unauthorized', 401);
+    }
+    
+    if ($user->email_verified) {
+        return $this->error('Email already verified', 422);
+    }
+    
+    $this->emailVerificationService->resend($user);
+    
+    return $this->success([], 'Verification link sent', 200);
+}
 }

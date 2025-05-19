@@ -105,7 +105,8 @@ extend type Mutation {
 
   logout(refresh_token: String!): Response! @field(resolver: "AuthResolver@logout")
   refreshToken(refresh_token: String!): AuthPayload! @field(resolver: "AuthResolver@refreshToken")
-  
+  resendVerificationEmail: BaseResponse @field(resolver: "UserCredentialResolver@resendVerification")
+
   # AUTHENTICATED USER ENDPOINTS
   # Users can update their own info
   updateUserInfo(

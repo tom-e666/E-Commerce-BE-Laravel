@@ -1,5 +1,6 @@
 <?php
 
+
 namespace Database\Seeders;
 
 use App\Models\Brand;
@@ -23,7 +24,11 @@ class BrandSeeder extends Seeder
         ];
         
         foreach ($brands as $brand) {
-            Brand::create(['name' => $brand]);
+            // Using firstOrCreate to avoid duplicate entries
+            Brand::firstOrCreate(['name' => $brand]);
         }
+        
+        // Output success message
+        $this->command->info('Brands seeded: ' . Brand::count());
     }
 }
