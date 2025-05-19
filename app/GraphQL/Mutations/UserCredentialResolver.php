@@ -14,99 +14,108 @@ final readonly class UserCredentialResolver{
         // TODO implement the resolver
     }
 
-    public function updateUserInfo($_, array $args): array
+    public function updateUserInfo($_, array $args)
     {
-        $validation = validator($args, [
+        $user = AuthService::Auth();
+        if (!$user) {
+            return $this->error('Unauthorized', 401);
+        }
+        
+        // Check if user can update their profile
+        if (Gate::denies('update', $user)) {
+            return $this->error('You are not authorized to update this profile', 403);
+        }
+        
+        $validator = Validator::make($args, [
+            'email' => 'email|unique:user_credentials,email,'.$user->id,
+            'phone' => 'string|unique:user_credentials,phone,'.$user->id,
             'full_name' => 'string|max:255',
-            'email' => 'email|max:255',
-            'phone' => 'string|max:15',
         ]);
 
-        if ($validation->fails()) {
-            return $this->error($validation->errors()->first(), 400);
+        if ($validator->fails()) {
+            return $this->error($validator->errors()->first(), 400);
         }
+        
+        // Update only provided fields
         $updateData = [];
-        if (isset($args['full_name'])) {
-            $updateData['full_name'] = $args['full_name'];
-        }
-        if (isset($args['email'])) {
-            $updateData['email'] = $args['email'];
-        }
-        if (isset($args['phone'])) {
-            $updateData['phone'] = $args['phone'];
-        }
-        if (isset($args['username'])) {
-            $updateData['username'] = $args['username'];
-        }
-        if (empty($updateData)) {
-            return $this->error('No fields to update', 400);
-        }
-        $user = AuthService::Auth();
-        if(!$user){
-            return $this->error('Unauthorized', 401);
-        }
-
-        $userCredential = UserCredential::where('id', $user->id)->first();
-        if($userCredential){
-            $userCredential->update($updateData);
-        }
-
+        if (isset($args['email'])) $updateData['email'] = $args['email'];
+        if (isset($args['phone'])) $updateData['phone'] = $args['phone'];
+        if (isset($args['full_name'])) $updateData['full_name'] = $args['full_name'];
+        
+        $user->update($updateData);
+        
         return $this->success([
-            'user' => $userCredential,
-        ], 'success', 200);
+            'user' => $user,
+        ], 'User information updated successfully', 200);
     }
-
-    public function changePassword($_, array $args): array
+    
+    public function changePassword($_, array $args)
     {
-        $validation = validator($args, [
-            'old_password' => 'required|string',
-            'new_password' => 'required|string|min:8|confirmed',
-        ]);
-
-        if ($validation->fails()) {
-            return $this->error($validation->errors()->first(), 400);
-        }
-
         $user = AuthService::Auth();
-        if($user&& password_verify($args['old_password'], $userCredential->password)){
-            $userCredential->password= bcrypt($args['new_password']);
-            $userCredential->save();
-            return $this->success([
-                'message' => 'Password updated successfully',
-            ], 'success', 200);
-        } else {
-            return $this->error('Old password is incorrect', 400);
-        }
-    }
-    public function changeUserRole($_, array $args): array
-    {
-        $validation = validator($args, [
-            'user_id' => 'required|exists:user_credentials,id',
-            'role' => 'required|string|in:admin,staff,user',
-        ]);
-
-        if ($validation->fails()) {
-            return $this->error($validation->errors()->first(), 400);
-        }
-
-        $user = AuthService::Auth();
-        if(!$user){
+        if (!$user) {
             return $this->error('Unauthorized', 401);
-        } else if(!AuthService::isAdmin()){
-            return $this->error('Forbidden', 403);
         }
+        
+        // Check if user can change their password
+        if (Gate::denies('changePassword', $user)) {
+            return $this->error('You are not authorized to change this password', 403);
+        }
+        
+        $validator = Validator::make($args, [
+            'old_password' => 'required|string',
+            'new_password' => 'required|string|min:8|different:old_password',
+        ]);
 
-        $userCredential = UserCredential::where('id', $args['user_id'])->first();
-        if($userCredential){
-            $userCredential->update([
-                'role' => $args['role'],
-            ]);
-            return $this->success([
-                'message' => 'User role updated successfully',
-                'user' => $userCredential,
-            ], 'success', 200);
-        } else {
-            return $this->error('User not found', 404);
+        if ($validator->fails()) {
+            return $this->error($validator->errors()->first(), 400);
         }
+        
+        // Verify old password
+        if (!Hash::check($args['old_password'], $user->password)) {
+            return $this->error('Current password is incorrect', 400);
+        }
+        
+        $user->password = Hash::make($args['new_password']);
+        $user->save();
+        
+        // Optional: Invalidate all user's tokens after password change
+        // $user->tokens()->delete();
+        
+        return $this->success([], 'Password changed successfully', 200);
+    }
+    public function updateUserRole($_, array $args)
+    {
+        $user = AuthService::Auth();
+        if (!$user) {
+            return $this->error('Unauthorized', 401);
+        }
+        
+        if (Gate::denies('updateRole', $user)) {
+            return $this->error('You are not authorized to update user roles', 403);
+        }
+        
+        $validator = Validator::make($args, [
+            'user_id' => 'required|exists:user_credentials,id',
+            'role' => 'required|in:admin,staff,user',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->error($validator->errors()->first(), 400);
+        }
+        
+        $targetUser = UserCredential::find($args['user_id']);
+        if ($targetUser->isAdmin() && $args['role'] !== 'admin') {
+            $adminCount = UserCredential::where('role', 'admin')->count();
+            if ($adminCount <= 1) {
+                return $this->error('Cannot remove the last administrator', 400);
+            }
+        }
+        
+        $targetUser->role = $args['role'];
+        $targetUser->save();
+        
+        return $this->success([
+            'user' => $targetUser,
+        ], 'User role updated successfully', 200);
     }
 }

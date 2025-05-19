@@ -50,13 +50,19 @@ final readonly class BrandResolver
         }
         try {
             $brand = Brand::find($args['id']);
+            
+            if (Gate::denies('update', $brand)) {
+                return $this->error('You are not authorized to update this brand', 403);
+            }
+            
             $brand->update([
                 'name' => $args['name'],
             ]);
+            
             return $this->success([
                 'brand' => $brand,
-            ], 'success', 200);
-        } catch (Exception $e) {
+            ], 'Brand updated successfully', 200);
+        } catch (\Exception $e) {
             return $this->error($e->getMessage(), 500);
         }
     }
@@ -70,11 +76,19 @@ final readonly class BrandResolver
         }
         try {
             $brand = Brand::find($args['id']);
+            
+            // Check if brand is in use
+            $productCount = Product::where('brand_id', $args['id'])->count();
+            if ($productCount > 0) {
+                return $this->error(
+                    "Cannot delete brand: {$productCount} products are using this brand", 
+                    400
+                );
+            }
+            
             $brand->delete();
-            return $this->success([
-                'message' => 'Brand deleted successfully',
-            ], 'success', 200);
-        } catch (Exception $e) {
+            return $this->success([], 'Brand deleted successfully', 200);
+        } catch (\Exception $e) {
             return $this->error($e->getMessage(), 500);
         }
     }

@@ -20,6 +20,7 @@ class Kernel extends HttpKernel
         // \Illuminate\Session\Middleware\StartSession::class,
         // \Illuminate\View\Middleware\ShareErrorsFromSession::class,
         // \Illuminate\Auth\Middleware\AuthenticateSession::class,
+        
     ];
 
     /**
@@ -31,6 +32,9 @@ class Kernel extends HttpKernel
         'api' => [
             'throttle:60,1',
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
+        ],
+        'auth.throttle' => [
+            'throttle:5,1',
         ],
     ];
 

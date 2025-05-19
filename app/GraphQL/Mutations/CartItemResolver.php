@@ -3,59 +3,159 @@
 namespace App\GraphQL\Mutations;
 
 use App\Models\CartItem;
+use App\Models\Product;
 use Illuminate\Support\Facades\Validator;
 use App\GraphQL\Traits\GraphQLResponse;
 use App\Services\AuthService;
 
-final readonly class CartItemResolver
+final class CartItemResolver
 {
-
     use GraphQLResponse;
 
-    /** @param  array{}  $args */
-    public function __invoke(null $_, array $args)
-    {
-        // TODO implement the resolver
-    }
+    /**
+     * Add or update an item in the cart
+     */
     public function updateCart($_, array $args)
     {
-        $validator=Validator::make($args,[
-            'product_id'=>'required|string|exists:products,id',
-            'quantity'=>'required|numeric|min:1',
+        $validator = Validator::make($args, [
+            'product_id' => 'required|string|exists:products,id',
+            'quantity' => 'required|numeric|min:1',
         ]);
-        if($validator->fails()){
+        
+        if ($validator->fails()) {
             return $this->error($validator->errors()->first(), 400);
         }
 
-        $user = AuthService::Auth(); // pre-handled by middleware
-        $cartItem = CartItem::where('user_id', $user->id)->where('product_id',$args['product_id'])->first();
+        $user = AuthService::Auth();
+        if (!$user) {
+            return $this->error('Unauthorized', 401);
+        }
+        
+        // Check product availability
+        $product = Product::find($args['product_id']);
+        if (!$product) {
+            return $this->error('Product not found', 404);
+        }
+        
+        if (!$product->status) {
+            return $this->error('Product is not available for purchase', 400);
+        }
+        
+        // Check if requested quantity exceeds available stock
+        if ($args['quantity'] > $product->stock) {
+            return $this->error("Cannot add {$args['quantity']} items. Only {$product->stock} in stock.", 400);
+        }
+        
+        // Find existing cart item or create a new one
+        $cartItem = CartItem::where('user_id', $user->id)
+                           ->where('product_id', $args['product_id'])
+                           ->first();
+                           
         if ($cartItem) {
-            $cartItem->quantity = max($cartItem->product->quantity, $args['quantity']);
+            $cartItem->quantity = $args['quantity'];
             $cartItem->save();
-        }else{
+        } else {
             $cartItem = CartItem::create([
                 'user_id' => $user->id,
                 'product_id' => $args['product_id'],
-                'quantity' => max($args['quantity'], 1),
+                'quantity' => $args['quantity'],
             ]);
         }
-        return $this->success(['item' => $cartItem, ], 'CartItem updated successfully', 200);
+        
+        // Load product relation for the response
+        $cartItem->load('product');
+        
+        return $this->success([
+            'item' => $this->formatCartItemResponse($cartItem),
+        ], 'Cart item updated successfully', 200);
     }
+
+    /**
+     * Remove an item from the cart
+     */
     public function deleteCartItem($_, array $args)
     {
-        $validator=Validator::make($args,[
-            'product_id'=>'required|string|exists:products,id',
+        $validator = Validator::make($args, [
+            'product_id' => 'required|string|exists:products,id',
         ]);
-        if($validator->fails()){
+        
+        if ($validator->fails()) {
             return $this->error($validator->errors()->first(), 400);
         }
-        $user = AuthService::Auth();
         
-        $cartItem = CartItem::where('user_id', $user->id)->where('product_id',$args['product_id'])->first();
-        if (!$cartItem) {
-            return $this->error('CartItem not found', 404);
+        $user = AuthService::Auth();
+        if (!$user) {
+            return $this->error('Unauthorized', 401);
         }
+        
+        $cartItem = CartItem::where('user_id', $user->id)
+                           ->where('product_id', $args['product_id'])
+                           ->first();
+                           
+        if (!$cartItem) {
+            return $this->error('Cart item not found', 404);
+        }
+        
         $cartItem->delete();
-        return $this->success(null, 'CartItem deleted successfully', 200);
+        
+        return $this->success([], 'Cart item removed successfully', 200);
+    }
+    
+    /**
+     * Clear all items from the cart
+     */
+    public function clearCart($_, array $args)
+    {
+        $user = AuthService::Auth();
+        if (!$user) {
+            return $this->error('Unauthorized', 401);
+        }
+        
+        CartItem::where('user_id', $user->id)->delete();
+        
+        return $this->success([], 'Cart cleared successfully', 200);
+    }
+    
+    /**
+     * Get all items in the user's cart
+     */
+    public function getCartItems($_, array $args)
+    {
+        $user = AuthService::Auth();
+        if (!$user) {
+            return $this->error('Unauthorized', 401);
+        }
+        
+        $cartItems = CartItem::where('user_id', $user->id)
+                           ->with('product')
+                           ->get()
+                           ->map(function($item) {
+                               return $this->formatCartItemResponse($item);
+                           });
+        
+        return $this->success([
+            'cart_items' => $cartItems,
+        ], 'Success', 200);
+    }
+    
+    /**
+     * Format cart item for response
+     */
+    private function formatCartItemResponse($cartItem)
+    {
+        $product = $cartItem->product;
+        
+        return [
+            'id' => $cartItem->id,
+            'quantity' => $cartItem->quantity,
+            'product' => [
+                'product_id' => $product->id,
+                'name' => $product->name,
+                'price' => $product->price,
+                'image' => $product->image_url ?? null,
+                'stock' => $product->stock,
+                'status' => (bool) $product->status
+            ]
+        ];
     }
 }

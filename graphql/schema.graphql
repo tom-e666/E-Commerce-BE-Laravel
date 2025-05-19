@@ -30,12 +30,18 @@ type UserCredential {
   phone: String
   full_name: String
   role: String    
+  email_verified: Boolean
 }
 
 type UserResponse implements BaseResponse {
   code: Int!
   message: String!
   user: UserCredential
+}
+type UsersResponse implements BaseResponse {
+  code: Int!
+  message: String!
+  users: [UserCredential]
 }
 
 type UserLogResponse {
@@ -62,10 +68,26 @@ input UserLogInput {
 # Queries
 extend type Query {
   getUserByJWT: UserResponse @field(resolver: "AuthResolver@getUserByJWT") @guard(with: ["api"])
-  
+getUserCredential: UserResponse @field(resolver: "UserCredentialResolver@getUserCredential") @guard(with: ["api"])
+updateUserInfo(...): UserResponse @field(resolver: "UserCredentialResolver@updateUserInfo") @guard(with: ["api"])
+changePassword(...): Response @field(resolver: "UserCredentialResolver@changePassword") @guard(with: ["api"])
 
-  getUserCredential: UserResponse @field(resolver: "UserCredentialResolver@getUserCredential") @guard(with: ["api"])
+
+getAllUsers(
+    role: String
+    search: String
+    page: Int
+    per_page: Int
+  ): UsersResponse 
+    @field(resolver: "UserCredentialResolver@getAllUsers") 
+    @guard(with: ["api"]) 
+ getUser(user_id: ID!): UserResponse 
+    @field(resolver: "UserCredentialResolver@getUser") 
+    @guard(with: ["api"])
+  
 }
+
+
 
 # Mutations
 extend type Mutation {
@@ -79,8 +101,8 @@ extend type Mutation {
   login(
     email: String!
     password: String!
-  ): AuthPayload! @field(resolver: "AuthResolver@login")
-  
+  ): AuthPayload! @field(resolver: "AuthResolver@login") @middleware(checks:["auth.throttle"])
+
   logout(refresh_token: String!): Response! @field(resolver: "AuthResolver@logout")
   refreshToken(refresh_token: String!): AuthPayload! @field(resolver: "AuthResolver@refreshToken")
   
@@ -97,6 +119,27 @@ extend type Mutation {
     old_password: String!
     new_password: String!
   ): Response @field(resolver: "UserCredentialResolver@changePassword") @guard(with: ["api"])
+  updateUserRole(
+    user_id: ID!
+    role: String!
+  ): UserResponse 
+    @field(resolver: "UserCredentialResolver@updateUserRole") 
+    @guard(with: ["api"]) 
+
+      deleteUser(
+    user_id: ID!
+  ): Response 
+    @field(resolver: "UserCredentialResolver@deleteUser") 
+    @guard(with: ["api"]) 
+
+     sendVerificationEmail: Response 
+    @field(resolver: "AuthResolver@sendVerificationEmail") 
+    @guard(with: ["api"])
+  # Verify email with token
+   verifyEmail(token: String!): Response 
+    @field(resolver: "AuthResolver@verifyEmail")
+
+
 }
 
 #-----------------------------------------------
@@ -176,7 +219,7 @@ extend type Mutation {
     status: Boolean!
     brand_id: ID!
     details: ProductDetailsInput!
-  ): ProductItemResponse @field(resolver: "ProductResolver@createProduct") @guard(with: ["api"]) @hasRole(roles: ["admin", "staff"])
+  ): ProductItemResponse @field(resolver: "ProductResolver@createProduct") @guard(with: ["api"]) 
   
   updateProduct(
     id: ID!
@@ -186,9 +229,9 @@ extend type Mutation {
     status: Boolean
     brand_id: ID
     details: ProductDetailsInput
-  ): ProductItemResponse @field(resolver: "ProductResolver@updateProduct") @guard(with: ["api"]) @hasRole(roles: ["admin", "staff"])
-  
-  deleteProduct(id: ID!): Response @field(resolver: "ProductResolver@deleteProduct") @guard(with: ["api"]) @hasRole(roles: ["admin"])
+  ): ProductItemResponse @field(resolver: "ProductResolver@updateProduct") @guard(with: ["api"])
+
+  deleteProduct(id: ID!): Response @field(resolver: "ProductResolver@deleteProduct") @guard(with: ["api"])
 }
 
 #-----------------------------------------------
@@ -220,9 +263,9 @@ extend type Query {
 
 # Mutations
 extend type Mutation {
-  createBrand(name: String!): BrandResponse @field(resolver: "BrandResolver@createBrand") @guard(with: ["api"]) @hasRole(roles: ["admin", "staff"])
-  updateBrand(id: ID!, name: String!): BrandResponse @field(resolver: "BrandResolver@updateBrand") @guard(with: ["api"]) @hasRole(roles: ["admin", "staff"])
-  deleteBrand(id: ID!): Response @field(resolver: "BrandResolver@deleteBrand") @guard(with: ["api"]) @hasRole(roles: ["admin"])
+  createBrand(name: String!): BrandResponse @field(resolver: "BrandResolver@createBrand") @guard(with: ["api"]) 
+  updateBrand(id: ID!, name: String!): BrandResponse @field(resolver: "BrandResolver@updateBrand") @guard(with: ["api"]) 
+  deleteBrand(id: ID!): Response @field(resolver: "BrandResolver@deleteBrand") @guard(with: ["api"])
 }
 
 #-----------------------------------------------
@@ -271,6 +314,8 @@ extend type Mutation {
   removeCartItem(
     product_id: ID!
   ): Response @field(resolver: "CartItemResolver@deleteCartItem") @guard(with: ["api"])
+  clearCart: Response @field(resolver: "CartItemResolver@clearCart") @guard(with: ["api"])
+
 }
 
 #-----------------------------------------------
@@ -318,7 +363,15 @@ type OrdersResponse implements BaseResponse {
 # Queries
 extend type Query {
   getOrder(order_id: ID!): OrderResponse! @field(resolver: "OrderResolver@getOrder") @guard(with: ["api"])
-  
+  # ADMIN/STAFF: Can view and filter all orders
+  getAllOrders(
+    user_id: ID,
+    status: String,
+    created_after: String,
+    created_before: String
+  ): OrdersResponse! 
+    @field(resolver: "OrderResolver@getAllOrders") 
+    @guard(with: ["api"]) 
   getUserOrders: OrdersResponse @field(resolver: "OrderResolver@getUserOrders") @guard(with: ["api"])
 }
 
@@ -327,11 +380,10 @@ extend type Mutation {
   createOrderFromCart: OrderResponse! @field(resolver: "OrderResolver@createOrderFromCart") @guard(with: ["api"])
   
   cancelOrder(order_id: ID!): BaseResponseImplementation! @field(resolver: "OrderResolver@cancelOrder") @guard(with: ["api"])
-  
-  confirmOrder(order_id: ID!): BaseResponseImplementation! @field(resolver: "OrderResolver@confirmOrder") @guard(with: ["api"]) @hasRole(roles: ["admin", "staff"])
-  shipOrder(order_id: ID!): BaseResponseImplementation! @field(resolver: "OrderResolver@shipOrder") @guard(with: ["api"]) @hasRole(roles: ["admin", "staff"])
-  deliverOrder(order_id: ID!): BaseResponseImplementation! @field(resolver: "OrderResolver@deliverOrder") @guard(with: ["api"]) @hasRole(roles: ["admin", "staff"])
-  
+
+  confirmOrder(order_id: ID!): BaseResponseImplementation! @field(resolver: "OrderResolver@confirmOrder") @guard(with: ["api"])
+  shipOrder(order_id: ID!): BaseResponseImplementation! @field(resolver: "OrderResolver@shipOrder") @guard(with: ["api"])
+  deliverOrder(order_id: ID!): BaseResponseImplementation! @field(resolver: "OrderResolver@deliverOrder") @guard(with: ["api"])
 
   updateOrderItem(
     order_item_id: ID!
@@ -409,7 +461,6 @@ extend type Query {
   ): PaymentsResponse 
     @field(resolver: "PaymentResolver@getAllPayments") 
     @guard(with: ["api"]) 
-    @hasRole(roles: ["admin", "staff"])
 }
 
 #-----------------------------------------------
@@ -502,12 +553,11 @@ extend type Query {
   
   # USER: Can view shipping for own orders
   # ADMIN/STAFF: Can view shipping for any order
-  getShippingByOrderId(order_id: ID!): ShippingResponse! @field(resolver: "App\\GraphQL\\Queries\\ShippingResolver@getShippingByOrderId") @guard(with: ["api"])}
+  getShippingByOrderId(order_id: ID!): ShippingResponse! @field(resolver: "App\\GraphQL\\Queries\\ShippingResolver@getShippingByOrderId") @guard(with: ["api"])
 
   getAllShippings(status: String): ShippingsResponse! 
     @field(resolver: "App\\GraphQL\\Queries\\ShippingResolver@getShippings") 
     @guard(with: ["api"]) 
-    @hasRole(roles: ["admin", "staff"])
 }
 
 extend type Mutation {
@@ -530,7 +580,6 @@ extend type Mutation {
   ): ShippingResponse! 
     @field(resolver: "App\\GraphQL\\Mutations\\ShippingResolver@updateShippingStatus") 
     @guard(with: ["api"]) 
-    @hasRole(roles: ["admin", "staff"])
 
   cancelShipping(shipping_id: ID!): BaseResponseImplementation! @field(resolver: "App\\GraphQL\\Mutations\\ShippingResolver@cancelShipping") @guard(with: ["api"])
 }
@@ -659,7 +708,6 @@ extend type Query {
   getAllReviews(user_id: ID): ReviewsResponse 
     @field(resolver: "ReviewResolver@getAllReviews") 
     @guard(with: ["api"]) 
-    @hasRole(roles: ["admin", "staff"])
   
   # PUBLIC ENDPOINT - View product reviews
   getReviewsByProduct(product_id: ID!, limit: Int, page: Int): ReviewsResponse 
@@ -688,4 +736,137 @@ extend type Mutation {
   ): BaseResponseImplementation 
     @field(resolver: "ReviewResolver@deleteReview") 
     @guard(with: ["api"])
+}
+
+
+#-----------------------------------------------
+# METRICS FEATURE (ADMIN)
+#-----------------------------------------------
+
+# Types
+type SalesMetric {
+  date: String!
+  revenue: Float!
+  orders_count: Int!
+  average_order_value: Float!
+}
+
+type ProductMetric {
+  id: ID!
+  name: String!
+  sales_count: Int!
+  revenue: Float!
+  stock_remaining: Int!
+  stock_percentage: Float!
+}
+
+type UserMetric {
+  new_users_count: Int!
+  active_users_count: Int!
+  conversion_rate: Float!
+}
+
+type SupportMetric {
+  open_tickets: Int!
+  in_progress_tickets: Int!
+  resolved_tickets: Int!
+  average_resolution_time: Float! # In hours
+}
+
+type AdminDashboardResponse implements BaseResponse {
+  code: Int!
+  message: String!
+  orders_today: Int
+  orders_week: Int
+  orders_month: Int
+  revenue_today: Float
+  revenue_week: Float
+  revenue_month: Float
+  total_products: Int
+  low_stock_products: Int
+  out_of_stock_products: Int
+  total_users: Int
+  new_users_today: Int
+  new_users_week: Int
+  support_tickets_open: Int
+  support_tickets_total: Int
+}
+
+type SalesMetricsResponse implements BaseResponse {
+  code: Int!
+  message: String!
+  daily_metrics: [SalesMetric]
+  weekly_metrics: [SalesMetric]
+  monthly_metrics: [SalesMetric]
+}
+
+type TopProductsResponse implements BaseResponse {
+  code: Int!
+  message: String!
+  top_selling_products: [ProductMetric]
+  low_stock_products: [ProductMetric]
+}
+
+# Queries
+extend type Query {
+  # Admin dashboard overview
+  getAdminDashboardMetrics: AdminDashboardResponse 
+    @field(resolver: "MetricsResolver@getDashboardMetrics") 
+    @guard(with: ["api"]) 
+
+  # Detailed sales metrics with timeframe
+  getSalesMetrics(timeframe: String!, start_date: String, end_date: String): SalesMetricsResponse 
+    @field(resolver: "MetricsResolver@getSalesMetrics") 
+    @guard(with: ["api"]) 
+
+  # Top selling and low stock products  
+  getProductMetrics(limit: Int): TopProductsResponse 
+    @field(resolver: "MetricsResolver@getProductMetrics") 
+    @guard(with: ["api"]) 
+
+  # Support ticket analytics
+  getSupportMetrics: SupportMetric 
+    @field(resolver: "MetricsResolver@getSupportMetrics") 
+    @guard(with: ["api"]) 
+}
+#-----------------------------------------------
+# Search FEATURE
+#-----------------------------------------------
+type SearchMetadata {
+  original_query: String!
+  interpreted_query: String
+  processing_time_ms: Int
+}
+
+type SmartSearchResponse implements BaseResponse {
+  code: Int!
+  message: String!
+  products: [ProductItem]  # Changed from results: [SearchResult]
+  total: Int!
+  filters: SearchFilters
+  metadata: SearchMetadata
+}
+
+type SearchFilters {
+  brands: [FilterOption]
+  categories: [FilterOption]
+  price_range: PriceRange
+}
+
+type FilterOption {
+  id: ID!
+  name: String!
+  count: Int!
+}
+
+type PriceRange {
+  min: Float!
+  max: Float!
+}
+
+extend type Query {
+  # Natural language search using Gemini API
+  smartSearch(
+    query: String!
+  ): SmartSearchResponse @field(resolver: "SearchResolver@smartSearch")
 }

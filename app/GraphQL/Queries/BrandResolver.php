@@ -16,23 +16,34 @@ final readonly class BrandResolver{
 
     public function getBrands($_, array $args): array
     {
-        $brands = Brand::all();
-        if ($brands->isEmpty()) {
-            return $this->error('No brands found', 404);
-        }
+        try {
+            $page = $args['page'] ?? 1;
+            $perPage = $args['per_page'] ?? 20;
+        
+        $brands = Brand::paginate($perPage, ['*'], 'page', $page);
+        
         return $this->success([
-            'brands' => $brands,
+            'brands' => $brands->items(),
         ], 'success', 200);
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 500);
+        }
+        
     }
     
     public function getBrand($_, array $args): array
     {
-        $brand = Brand::where('id', $args['id'])->first();
+        
+        try {
+            $brand = Brand::where('id', $args['id'])->first();
         if ($brand === null) {
             return $this->error('Brand not found', 404);
         }
         return $this->success([
             'brand' => $brand,
         ], 'success', 200);
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 500);
+        }
     }
 }

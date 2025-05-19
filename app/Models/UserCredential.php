@@ -26,7 +26,9 @@ class UserCredential extends Authenticatable implements JWTSubject
         'password',
         'full_name',
         'role',
-        // 'email_verified',
+        'email_verified',
+        'email_verification_token',
+        'email_verification_sent_at',
         // 'phone_verified',
     ];
 
@@ -36,8 +38,7 @@ class UserCredential extends Authenticatable implements JWTSubject
     ];
 
     protected $casts = [
-        // 'email_verified' => 'boolean',
-        // 'phone_verified' => 'boolean',
+        'email_verified' => 'boolean',
     ];
 
     /**

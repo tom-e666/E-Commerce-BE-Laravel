@@ -13,16 +13,81 @@ final readonly class UserCredentialResolver{
         // TODO implement the resolver
     }
     public function getUserCredential($_, array $args)
-    {   
+    {
         $user = AuthService::Auth();
-        
         if (!$user) {
-            // AuthService::Auth() now returns null on failure and logs the specific JWT error.
-            // The log will give you the precise reason (e.g., "Token expired", "Token invalid", "Token not provided").
-            return $this->error('Unauthorized: Could not authenticate user from token.', 401);
+            return $this->error('Unauthorized', 401);
         }
+        
         return $this->success([
             'user' => $user,
+        ], 'User retrieved successfully', 200);
+    }
+    public function getAllUsers($_, array $args)
+    {
+        $user = AuthService::Auth();
+        if (!$user) {
+            return $this->error('Unauthorized', 401);
+        }
+        
+        // Check if user can view all users
+        if (Gate::denies('viewAny', UserCredential::class)) {
+            return $this->error('You are not authorized to view all users', 403);
+        }
+        
+        $query = UserCredential::query();
+        
+        // Apply filters
+        if (isset($args['role'])) {
+            $query->where('role', $args['role']);
+        }
+        
+        if (isset($args['search'])) {
+            $search = $args['search'];
+            $query->where(function ($q) use ($search) {
+                $q->where('email', 'like', "%$search%")
+                  ->orWhere('full_name', 'like', "%$search%")
+                  ->orWhere('phone', 'like', "%$search%");
+            });
+        }
+        
+        // Pagination
+        $page = $args['page'] ?? 1;
+        $perPage = $args['per_page'] ?? 15;
+        
+        $users = $query->paginate($perPage, ['*'], 'page', $page);
+        
+        return $this->success([
+            'users' => $users->items(),
+            'total' => $users->total(),
+            'current_page' => $users->currentPage(),
+            'per_page' => $users->perPage(),
+        ], 'Users retrieved successfully', 200);
+    }
+    public function getUser($_, array $args)
+    {
+        $currentUser = AuthService::Auth();
+        if (!$currentUser) {
+            return $this->error('Unauthorized', 401);
+        }
+        
+        $validator = Validator::make($args, [
+            'user_id' => 'required|exists:user_credentials,id',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->error($validator->errors()->first(), 400);
+        }
+        
+        $targetUser = UserCredential::find($args['user_id']);
+        
+        // Check if user can view this user
+        if (Gate::denies('view', $targetUser)) {
+            return $this->error('You are not authorized to view this user', 403);
+        }
+        
+        return $this->success([
+            'user' => $targetUser,
         ], 'User retrieved successfully', 200);
     }
 }

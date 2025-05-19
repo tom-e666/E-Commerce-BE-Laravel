@@ -31,6 +31,9 @@ class AuthServiceProvider extends ServiceProvider
         Shipping::class => ShippingPolicy::class,
         SupportTicket::class => SupportTicketPolicy::class,
         Review::class => ReviewPolicy::class,
+        Brand::class => BrandPolicy::class,
+        UserCredential::class => UserCredentialPolicy::class,
+        'App\Models\Metrics' => MetricsPolicy::class
     ];
 
     /**
