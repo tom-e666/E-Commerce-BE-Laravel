@@ -661,10 +661,20 @@ extend type Mutation {
 # REVIEW FEATURE
 #-----------------------------------------------
 # Types
+type ProductReview{
+  id: ID
+  name: String
+  image: String
+}
+type UserReview{
+  id: ID
+  username: String
+}
 type Review {
   id: ID!
-  product_id: ID!
-  user_id: ID!
+  product: ProductReview!
+  user_id: ID
+  user: UserReview
   rating: Int!
   comment: String
   created_at: String
@@ -681,6 +691,7 @@ type ReviewsResponse implements BaseResponse {
   code: Int!
   message: String!
   reviews: [Review]
+  total: Int!
 }
 
 # Queries

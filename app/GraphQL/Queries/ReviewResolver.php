@@ -2,6 +2,7 @@
 
 namespace App\GraphQL\Queries;
 
+use App\Models\UserCredential;
 use App\Models\Review;
 use App\Models\Product;
 use App\GraphQL\Traits\GraphQLResponse;
@@ -60,7 +61,7 @@ final class ReviewResolver
                 $product = Product::find($review->product_id);
                 
                 return [
-                    'id' => (string)$review->_id,
+                    'id' => $review->id,
                     'rating' => (int)$review->rating,
                     'comment' => $review->comment,
                     'created_at' => $review->created_at,
@@ -92,10 +93,7 @@ final class ReviewResolver
      */
     public function getUserReviews($_, array $args): array
     {
-        $user = AuthService::Auth();
-        if (!$user) {
-            return $this->error('Unauthorized', 401);
-        }
+        $user = auth('api')->user();
         
         // Check if viewing another user's reviews
         $userId = $args['user_id'] ?? $user->id;
@@ -107,7 +105,7 @@ final class ReviewResolver
         }
         
         try {
-            $query = Review::where('user_id', (string)$userId);
+            $query = Review::where('user_id', $userId);
             
             // Get results with product info
             $reviews = $query->with(['product', 'product.details'])
@@ -120,16 +118,17 @@ final class ReviewResolver
                     'total' => 0
                 ], 'No reviews found for this user', 200);
             }
-            
+
             // Format the reviews output
             $formattedReviews = $reviews->map(function ($review) {
                 return [
-                    'id' => (string)$review->_id,
+                    'id' => $review->id,
+                    'user_id'=> $review->user_id,
                     'rating' => (int)$review->rating,
                     'comment' => $review->comment,
                     'created_at' => $review->created_at,
                     'product' => $review->product ? [
-                        'id' => (string)$review->product->id,
+                        'id' => $review->product->id,
                         'name' => $review->product->name,
                         'image' => $review->product->details && !empty($review->product->details->images) 
                             ? $review->product->details->images[0] 
@@ -137,7 +136,7 @@ final class ReviewResolver
                     ] : null,
                 ];
             });
-            
+
             return $this->success([
                 'reviews' => $formattedReviews,
                 'total' => $reviews->count()
@@ -164,14 +163,14 @@ final class ReviewResolver
             }
             
             // Check if user can view this review
-            $user = AuthService::Auth();
+            $user = auth('api')->user();
             if (!$review->product->status && (!$user || Gate::denies('view', $review))) {
                 return $this->error('You are not authorized to view this review', 403);
             }
             
             return $this->success([
                 'review' => [
-                    'id' => (string)$review->_id,
+                    'id' => $review->id,
                     'rating' => (int)$review->rating,
                     'comment' => $review->comment,
                     'created_at' => $review->created_at,
@@ -196,10 +195,7 @@ final class ReviewResolver
 public function getAllReviews($_, array $args): array
 {
     // Check authentication
-    $user = AuthService::Auth();
-    if (!$user) {
-        return $this->error('Unauthorized', 401);
-    }
+    $user = auth('api')->user();
     
     // Check if user has permission to view all reviews
     if (Gate::denies('viewAny', Review::class)) {
@@ -261,7 +257,7 @@ public function getAllReviews($_, array $args): array
         // Format the reviews output consistently with other methods
         $formattedReviews = $reviews->map(function ($review) {
             return [
-                'id' => (string)$review->_id,
+                'id' => $review->id,
                 'rating' => (int)$review->rating,
                 'comment' => $review->comment,
                 'created_at' => $review->created_at,
