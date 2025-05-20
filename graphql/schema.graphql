@@ -121,13 +121,13 @@ extend type Mutation {
     @field(resolver: "UserCredentialResolver@updateUserRole") 
     @guard(with: ["api"]) 
 
-      deleteUser(
+  deleteUser(
     user_id: ID!
   ): Response 
     @field(resolver: "UserCredentialResolver@deleteUser") 
     @guard(with: ["api"]) 
 
-     sendVerificationEmail: Response 
+  sendVerificationEmail: Response 
     @field(resolver: "AuthResolver@sendVerificationEmail") 
     @guard(with: ["api"])
   # Verify email with token

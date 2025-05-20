@@ -14,6 +14,7 @@ use App\GraphQL\Traits\GraphQLResponse;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
+use App\Services\EmailVerificationService;
 
 
 final readonly class AuthResolver
@@ -181,10 +182,11 @@ final readonly class AuthResolver
 
     public function sendVerificationEmail($_, $args)
     {
-        $user = AuthService::Auth();
-        if (!$user) {
-            return $this->error('Unauthorized', 401);
-        }
+        $user = auth('api')->user();
+
+        $emailService = app(EmailVerificationService::class);
+        $emailService->sendVerificationEmail($user);
+
         return $this->success([
             'user' => $user,
         ], 'Verification email sent successfully', 200);
