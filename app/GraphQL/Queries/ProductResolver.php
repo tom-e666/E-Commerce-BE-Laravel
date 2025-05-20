@@ -221,6 +221,120 @@ final class ProductResolver
     }
     
     /**
+     * Get paginated products with filters and sorting
+     *
+     * @param mixed $_ Root value (not used)
+     * @param array $args Query arguments
+     * @return array Response with paginated products or error
+     */
+    public function getPaginatedProducts($_, array $args): array
+    {
+        try {
+            $query = Product::query();
+            
+            // Filter by status
+            if (isset($args['status'])) {
+                if ($args['status'] === 'all') {
+                    // Only admins/staff can see all products including inactive ones
+                    $user = AuthService::Auth();
+                    if (!$user || Gate::denies('viewAny', Product::class)) {
+                        $query->where('status', true);
+                    }
+                } else {
+                    $query->where('status', $args['status'] === 'active');
+                }
+            } else {
+                // Default to showing only active products
+                $query->where('status', true);
+            }
+            
+            // Apply category filter if provided
+            if (isset($args['category_id']) && !empty($args['category_id'])) {
+                $query->where('category_id', $args['category_id']);
+            }
+            
+            // Apply brand filter if provided
+            if (isset($args['brand_id']) && !empty($args['brand_id'])) {
+                $query->where('brand_id', $args['brand_id']);
+            }
+            
+            // Apply price range filter if provided
+            if (isset($args['price_min'])) {
+                $query->where('price', '>=', $args['price_min']);
+            }
+            
+            if (isset($args['price_max'])) {
+                $query->where('price', '<=', $args['price_max']);
+            }
+            
+            // Apply name search if provided
+            if (isset($args['search']) && !empty($args['search'])) {
+                $searchTerm = $args['search'];
+                $query->where(function($q) use ($searchTerm) {
+                    $q->where('name', 'like', "%{$searchTerm}%")
+                      ->orWhereHas('details', function($q) use ($searchTerm) {
+                          $q->where('description', 'like', "%{$searchTerm}%")
+                            ->orWhere('keywords', 'like', "%{$searchTerm}%");
+                      });
+                });
+            }
+            
+            // Apply sorting
+            $sortField = $args['sort_field'] ?? 'created_at';
+            $sortDirection = $args['sort_direction'] ?? 'desc';
+            
+            // Validate sort field to prevent SQL injection
+            $allowedSortFields = ['name', 'price', 'created_at', 'stock'];
+            if (!in_array($sortField, $allowedSortFields)) {
+                $sortField = 'created_at';
+            }
+            
+            // Validate sort direction
+            $sortDirection = strtolower($sortDirection) === 'asc' ? 'asc' : 'desc';
+            $query->orderBy($sortField, $sortDirection);
+            
+            // Apply pagination
+            $page = $args['page'] ?? 1;
+            $perPage = $args['per_page'] ?? 10;
+            
+            // Eager load relationships to avoid N+1 queries
+            $products = $query->with(['details', 'category', 'brand'])
+                             ->paginate($perPage, ['*'], 'page', $page);
+            
+            // Get product IDs for batch MongoDB query
+            $productIds = collect($products->items())->pluck('id')->toArray();
+            
+            // Batch load product details from MongoDB (in case eager loading didn't work properly)
+            if (empty(ProductDetail::first())) {
+                Log::info('No product details found in MongoDB');
+            }
+            
+            $formattedProducts = collect($products->items())->map(function ($product) {
+                return $this->formatProductResponse($product);
+            });
+            
+            return $this->success([
+                'products' => $formattedProducts,
+                'pagination' => [
+                    'total' => $products->total(),
+                    'current_page' => $products->currentPage(),
+                    'per_page' => $products->perPage(),
+                    'last_page' => $products->lastPage(),
+                    'from' => $products->firstItem(),
+                    'to' => $products->lastItem(),
+                    'has_more_pages' => $products->hasMorePages(),
+                ]
+            ], 'Success', 200);
+        } catch (\Exception $e) {
+            Log::error('Failed to fetch paginated products: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'args' => $args
+            ]);
+            return $this->error('Failed to fetch products: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
      * Format product data for response
      *
      * @param Product $product Product model

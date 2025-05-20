@@ -252,5 +252,117 @@ final readonly class ShippingResolver
             'shipping' => $shipping
         ];
     }
+    /**
+     * Update shipping address and recipient information
+     * 
+     * @param mixed $_ Root value (not used)
+     * @param array $args Query arguments
+     * @return array Response with shipping or error
+     */
+    public function updateShipping($_, array $args): array
+    {
+        $user = AuthService::Auth();
+        if (!$user) {
+            return [
+                'code' => 401,
+                'message' => 'Unauthorized',
+                'shipping' => null
+            ];
+        }
+        
+        $shipping = Shipping::find($args['shipping_id']);
+        if (!$shipping) {
+            return [
+                'code' => 404,
+                'message' => 'Shipping not found',
+                'shipping' => null
+            ];
+        }
+        
+        $order = Order::find($shipping->order_id);
+        if (!$order) {
+            return [
+                'code' => 404,
+                'message' => 'Associated order not found',
+                'shipping' => null
+            ];
+        }
+        
+        // Use policy for authorization
+        if (Gate::denies('update', $shipping)) {
+            return [
+                'code' => 403,
+                'message' => 'You are not authorized to update this shipping information',
+                'shipping' => null
+            ];
+        }
+        
+        // Prevent updates to delivered shipments
+        if ($shipping->status === 'delivered' || $shipping->status === 'shipped') {
+            return [
+                'code' => 400,
+                'message' => 'Cannot update shipping information for shipments that have already been shipped or delivered',
+                'shipping' => null
+            ];
+        }
+        
+        // Update only the provided fields
+        $updateData = [];
+        if (isset($args['province_name'])) $updateData['province_name'] = $args['province_name'];
+        if (isset($args['district_name'])) $updateData['district_name'] = $args['district_name'];
+        if (isset($args['ward_name'])) $updateData['ward_name'] = $args['ward_name'];
+        if (isset($args['address'])) $updateData['address'] = $args['address'];
+        if (isset($args['recipient_name'])) $updateData['recipient_name'] = $args['recipient_name'];
+        if (isset($args['recipient_phone'])) $updateData['recipient_phone'] = $args['recipient_phone'];
+        if (isset($args['note'])) $updateData['note'] = $args['note'];
+        
+        // If shipping method is GHN and address changed, update shipping info with GHN API
+        if ($shipping->shipping_method === 'GHN' && 
+            (isset($args['province_name']) || isset($args['district_name']) || 
+             isset($args['ward_name']) || isset($args['address']))) {
+            
+            // Get updated shipping address information
+            $shippingInfo = [
+                'province_name' => $args['province_name'] ?? $shipping->province_name,
+                'district_name' => $args['district_name'] ?? $shipping->district_name,
+                'ward_name' => $args['ward_name'] ?? $shipping->ward_name,
+                'address' => $args['address'] ?? $shipping->address,
+                'recipient_name' => $args['recipient_name'] ?? $shipping->recipient_name,
+                'recipient_phone' => $args['recipient_phone'] ?? $shipping->recipient_phone,
+                'note' => $args['note'] ?? $shipping->note,
+                'order_id' => $shipping->order_id,
+                'shipping_method' => $shipping->shipping_method,
+                'weight' => $this->calculateShippingWeight($order),
+                'value' => $order->total_price,
+            ];
+            
+            // Update with GHN API
+            $response = $this->ghnService->updateShippingOrder($shipping->ghn_order_code, $shippingInfo);
+            
+            if (isset($response['code']) && $response['code'] === 200) {
+                // If API update was successful, update fee if changed
+                if (isset($response['data']['total_fee'])) {
+                    $updateData['shipping_fee'] = $response['data']['total_fee'];
+                }
+                if (isset($response['data']['expected_delivery_time'])) {
+                    $updateData['expected_delivery_time'] = $response['data']['expected_delivery_time'];
+                }
+            } else {
+                return [
+                    'code' => $response['code'] ?? 500,
+                    'message' => $response['message'] ?? 'Failed to update shipping with carrier',
+                    'shipping' => $shipping,
+                ];
+            }
+        }
+        
+        $shipping->update($updateData);
+        
+        return [
+            'code' => 200,
+            'message' => 'Shipping information updated successfully',
+            'shipping' => $shipping->fresh()
+        ];
+    }
 
 }

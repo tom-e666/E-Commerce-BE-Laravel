@@ -8,7 +8,8 @@ use Illuminate\Support\Facades\Validator;
 use App\GraphQL\Traits\GraphQLResponse;
 use App\Services\AuthService;
 use Illuminate\Support\Facades\Gate;
-
+use App\Models\ProductDetail;
+use App\Services\GHNService;
 final class CartItemResolver
 {
     use GraphQLResponse;

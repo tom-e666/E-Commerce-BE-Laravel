@@ -188,10 +188,39 @@ type ProductItemResponse implements BaseResponse {
   product: ProductItem
 }
 
+type PaginationInfo {
+  total: Int!
+  current_page: Int!
+  per_page: Int!
+  last_page: Int!
+  from: Int
+  to: Int
+  has_more_pages: Boolean!
+}
+
+type PaginatedProductsResponse implements BaseResponse {
+  code: Int!
+  message: String!
+  products: [ProductItem]
+  pagination: PaginationInfo
+}
+
 # Queries
 extend type Query {
   getProduct(id: ID!): ProductItemResponse @field(resolver: "ProductResolver@getProduct")
   getProducts(status: String): ProductItemsResponse @field(resolver: "ProductResolver@getProducts")
+  getPaginatedProducts(
+    search: String
+    status: String
+    category_id: ID
+    brand_id: ID
+    price_min: Float
+    price_max: Float
+    sort_field: String
+    sort_direction: String
+    page: Int
+    per_page: Int
+  ): PaginatedProductsResponse @field(resolver: "ProductResolver@getPaginatedProducts")
 }
 
 # Mutations
@@ -296,12 +325,12 @@ extend type Mutation {
   addCartItem(
     product_id: ID!
     quantity: Int!
-  ): CartItemResponse @field(resolver: "CartItemResolver@updateCart") @guard(with: ["api"])
+  ): BaseResponseImplementation @field(resolver: "CartItemResolver@updateCart") @guard(with: ["api"])
     
   removeCartItem(
     product_id: ID!
-  ): Response @field(resolver: "CartItemResolver@deleteCartItem") @guard(with: ["api"])
-  clearCart: Response @field(resolver: "CartItemResolver@clearCart") @guard(with: ["api"])
+  ): BaseResponseImplementation @field(resolver: "CartItemResolver@deleteCartItem") @guard(with: ["api"])
+  clearCart: BaseResponseImplementation @field(resolver: "CartItemResolver@clearCart") @guard(with: ["api"])
 
 }
 
@@ -550,7 +579,7 @@ extend type Query {
 extend type Mutation {
   # USER: Can create shipping for own orders
   # ADMIN/STAFF: Can create shipping for any order
- createShipping(
+  createShipping(
     order_id: ID!
     province_name: String!
     district_name: String!
@@ -561,14 +590,27 @@ extend type Mutation {
     note: String
     shipping_method: String!
   ): ShippingResponse! @field(resolver: "App\\GraphQL\\Mutations\\ShippingResolver@createShipping") @guard(with: ["api"])
+  
+  updateShipping(
+    shipping_id: ID!
+    province_name: String
+    district_name: String
+    ward_name: String
+    address: String
+    recipient_name: String
+    recipient_phone: String
+    note: String
+  ): ShippingResponse! @field(resolver: "App\\GraphQL\\Mutations\\ShippingResolver@updateShipping") @guard(with: ["api"])
+  
   updateShippingStatus(
     shipping_id: ID!
     status: String!
   ): ShippingResponse! 
     @field(resolver: "App\\GraphQL\\Mutations\\ShippingResolver@updateShippingStatus") 
     @guard(with: ["api"]) 
-
+  
   cancelShipping(shipping_id: ID!): BaseResponseImplementation! @field(resolver: "App\\GraphQL\\Mutations\\ShippingResolver@cancelShipping") @guard(with: ["api"])
+  
 }
 
 #-----------------------------------------------
