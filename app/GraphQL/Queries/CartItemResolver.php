@@ -3,10 +3,12 @@
 namespace App\GraphQL\Queries;
 
 use App\Models\CartItem;
+use App\Models\ProductDetail;
 use App\GraphQL\Traits\GraphQLResponse;
 use App\Services\AuthService;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
+
 final class CartItemResolver
 {
     use GraphQLResponse;
@@ -24,8 +26,8 @@ final class CartItemResolver
         if (!$user) {
             return $this->error('Unauthorized', 401);
         }
+        
         if (isset($args['user_id']) && $args['user_id'] !== $user->id) {
-
             if (Gate::denies('viewAny', CartItem::class)) {
                 return $this->error('You are not authorized to view other users\' cart items', 403);
             }
@@ -33,57 +35,73 @@ final class CartItemResolver
         } else {
             $userId = $user->id;
         }
-        $cartItems = $user->cart_items;
+        
+        // FIXED: Use direct query for better control and to fix relationship loading
+        $cartItems = CartItem::where('user_id', $userId)
+            ->with('product') // Eager load product relationship
+            ->get();
+        // If no items, return empty array
         if ($cartItems->isEmpty()) {
             return $this->success([
-                'cart_items' => [], // Return empty array instead of null for consistency
+                'cart_items' => [], 
             ], 'No items in cart', 200);
         }
-        foreach($cartItems as $item) {
-            $item->product= $item->product()->with('details')->first();
-        }
-        // $cartItems = $cartItems->where('user_id', $userId)
-        //     ->select('id', 'product_id', 'quantity', 'updated_at')
-        //     ->with(['product' => function($query) {
-        //         $query->with('details');
-        //     }])
-        //     ->orderBy('updated_at', 'desc')
-        //     ->get();
-        // Filter out items the user doesn't have permission to view
-        if ($cartItems->isEmpty()) {
-            return $this->success([
-                'cart_items' => [], // Return empty array instead of null for consistency
-            ], 'No items in cart', 200);
-        }
-        Log::info('Cart items retrieved successfully', [
-            'user_id' => $userId,
-            'cart_items' => $cartItems->toArray(),
-        ]);
-        $formattedCartItems = $cartItems->map(function ($item) {
-            // Handle potential null product
+        
+        // Get all product IDs for batch MongoDB query
+        $productIds = $cartItems->pluck('product_id')->filter()->toArray();
+        
+        // FIXED: Batch load product details from MongoDB
+        $productDetails = ProductDetail::whereIn('product_id', $productIds)
+            ->get()
+            ->keyBy('product_id');
+            
+        
+        // Format cart items with product details
+        $formattedCartItems = $cartItems->map(function ($item) use ($productDetails) {
+            // Skip items with missing products
             if (!$item->product) {
-                return null; // Will be filtered out below
+                Log::warning('Cart item has null product', ['cart_item_id' => $item->id]);
+                return null;
             }
-            $item->product->details = $item->product->details ?? null;
+            
+            // Get product details from our batch-loaded collection
+            $details = $productDetails->get($item->product_id);
+            
+            // Debug if product details are missing
+            if (!$details) {
+                Log::warning('Product details not found', ['product_id' => $item->product_id]);
+            }
+            
+            $image = null;
+            if ($details && !empty($details->images)) {
+                // Handle both array and JSON string formats
+                if (is_string($details->images)) {
+                    $imagesArray = json_decode($details->images, true);
+                    $image = $imagesArray[0] ?? null;
+                } else {
+                    $image = $details->images[0] ?? null;
+                }
+            }
+            
             return [
                 'id' => $item->id,
                 'quantity' => $item->quantity,
                 'product' => [
                     'product_id' => $item->product->id,
                     'name' => $item->product->name,
-                    'price' => (float)$item->product->price, // Ensure float type
-                    'stock' => (int)$item->product->stock,   // Ensure integer type
-                    'status' => (bool)$item->product->status, // Ensure boolean type
-                    'image' => $item->product->details && !empty($item->product->details->images) 
-                        ? $item->product->details->images[0] 
-                        : null,
+                    'price' => (float)$item->product->price,
+                    'stock' => (int)$item->product->stock,
+                    'status' => (bool)$item->product->status,
+                    'image' => $image,
                 ],
             ];
-        })->filter()->values(); // Filter out null items and reindex array        
+        })->filter()->values(); // Filter out null items and reindex array
+        
         return $this->success([
             'cart_items' => $formattedCartItems,
         ], 'Success', 200);
     }
+
     /**
      * Get cart total items count and price summary
      * 

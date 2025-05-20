@@ -11,6 +11,7 @@ use Nuwave\Lighthouse\Execution\ResolveInfo;
 use Nuwave\Lighthouse\Execution\HttpGraphQLContext;
 use App\Services\AuthService;
 use Illuminate\Support\Facades\Log;
+
 final class ProductResolver
 {
     use GraphQLResponse;
@@ -26,19 +27,9 @@ final class ProductResolver
     {
         try {
             $query = Product::query();
-            
             if (isset($args['status'])) {
-                if ($args['status'] === 'all') {
-                    $user = AuthService::Auth();
-                    
-                    if (!$user || Gate::denies('viewAny', Product::class)) {
-                        $query->where('status', true);
-                    }
-                } else {
-                    $query->where('status', $args['status'] === 'active');
-                }
-            } else {
-                $query->where('status', true);
+                
+                $query->where('status', $args['status']);
             }
             
             // Apply category filter if provided
@@ -59,20 +50,15 @@ final class ProductResolver
             if (isset($args['price_max'])) {
                 $query->where('price', '<=', $args['price_max']);
             }
-            $products = $query->get();
-            $productDetails = ProductDetail::all();
-            Log::info('Product Details all', ['details' => $productDetails]);
-            $user = AuthService::Auth();
-            if ($user) {
-                $products = $products->filter(function ($product) use ($user) {
-                    return Gate::allows('view', $product);
-                });
-            }
             
+            $products = $query->get()->take(100);
+
             $formattedProducts = $products->map(function ($product) {
+                
                 return $this->formatProductResponse($product);
             });
-            
+            Log::info(' 121 Formatted Products: ', ['products' => $formattedProducts]);
+
             return $this->success([
                 'products' => $formattedProducts,
             ], 'Success', 200);
@@ -243,7 +229,6 @@ final class ProductResolver
     private function formatProductResponse(Product $product): array
     {
         $productDetail = $product->details;
-        Log::info(' 121 Product Details ', ['details' => $productDetail]);
         $result = [
             'id' => $product->id,
             'name' => $product->name,
@@ -254,6 +239,7 @@ final class ProductResolver
             'category_id' => $product->category_id,
             'created_at' => $product->created_at,
             'updated_at' => $product->updated_at,
+            'weight' => $product->weight,
         ];
         if ($product->relationLoaded('brand') && $product->brand) {
             $result['brand_name'] = $product->brand->name;
