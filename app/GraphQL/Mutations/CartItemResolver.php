@@ -12,7 +12,6 @@ use Illuminate\Support\Facades\Gate;
 final class CartItemResolver
 {
     use GraphQLResponse;
-
     /**
      * Add or update an item in the cart
      */
@@ -22,16 +21,13 @@ final class CartItemResolver
             'product_id' => 'required|string|exists:products,id',
             'quantity' => 'required|numeric|min:1',
         ]);
-        
         if ($validator->fails()) {
             return $this->error($validator->errors()->first(), 400);
         }
-
         $user = AuthService::Auth();
         if (!$user) {
             return $this->error('Unauthorized', 401);
         }
-        
         // Check product availability
         $product = Product::find($args['product_id']);
         if (!$product) {
@@ -47,7 +43,7 @@ final class CartItemResolver
             return $this->error("Cannot add {$args['quantity']} items. Only {$product->stock} in stock.", 400);
         }
         
-        // Find existing cart item or create a new one
+       
         $cartItem = CartItem::where('user_id', $user->id)
                            ->where('product_id', $args['product_id'])
                            ->first();
@@ -58,7 +54,7 @@ final class CartItemResolver
                 return $this->error('You are not authorized to update this cart item', 403);
             }
             
-            $cartItem->quantity = $args['quantity'];
+            $cartItem->quantity += $args['quantity'];
             $cartItem->save();
         } else {
             // Check create permission using policy
@@ -146,25 +142,25 @@ final class CartItemResolver
         if (!$user) {
             return $this->error('Unauthorized', 401);
         }
-        
+
         $cartItems = CartItem::where('user_id', $user->id)
                            ->with('product')
                            ->get();
-        
+
         // Filter out items the user doesn't have permission to view
         $cartItems = $cartItems->filter(function($item) use ($user) {
             return Gate::allows('view', $item);
         });
-        
+
         $formattedItems = $cartItems->map(function($item) {
             return $this->formatCartItemResponse($item);
         });
-        
+
         return $this->success([
             'cart_items' => $formattedItems,
         ], 'Success', 200);
     }
-    
+
     /**
      * Format cart item for response
      */
