@@ -6,9 +6,12 @@ namespace App\Policies;
 use App\Models\Shipping;
 use App\Models\UserCredential;
 use App\Models\Order;
+use Illuminate\Auth\Access\HandlesAuthorization;
 
 class ShippingPolicy
 {
+    use HandlesAuthorization;
+
     /**
      * Determine whether the user can view any shipping records.
      */
@@ -36,11 +39,8 @@ class ShippingPolicy
      */
     public function create(UserCredential $user, Order $order): bool
     {
-        // Users can create shipping for their own orders
-        // Admin and staff can create shipping for any order
-        return $order->user_id === $user->id || 
-               $user->isAdmin() || 
-               $user->isStaff();
+        // User can create shipping if they own the order or are admin/staff
+        return $user->id === $order->user_id || $user->isAdmin() || $user->isStaff();
     }
 
     /**

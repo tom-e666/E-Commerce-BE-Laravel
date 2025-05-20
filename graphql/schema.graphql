@@ -550,7 +550,7 @@ extend type Query {
 extend type Mutation {
   # USER: Can create shipping for own orders
   # ADMIN/STAFF: Can create shipping for any order
- createGHNShipping(
+ createShipping(
     order_id: ID!
     province_name: String!
     district_name: String!

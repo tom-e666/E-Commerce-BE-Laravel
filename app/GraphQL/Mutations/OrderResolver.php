@@ -255,30 +255,14 @@
         }
         private function formatOrderResponse(Order $order): array
         {
-            $order->load('items.product');
-            
-            // Convert product_id values to strings to match MongoDB storage format
-            $productIds = $order->items->pluck('product_id')->map(function($id) {
-                return (string)$id;  // Ensuring IDs are strings for MongoDB
-            })->toArray();
-            
-            // Log raw product IDs for debugging
-            Log::info('Raw product IDs', [
-                'ids' => $order->items->pluck('product_id')->toArray()
+            $order->load('items.product.details');
+            Log::info('Order details from MySQL query', [
+                'count' => $order->items->count(),
+                'details' => $order->items->toArray()
             ]);
+
             
-            $productDetails = ProductDetail::whereIn('product_id', $productIds)
-                ->get();
-            
-            // Log the actual query results
-            Log::info('Product details from MongoDB query', [
-                'count' => $productDetails->count(),
-                'details' => $productDetails->toArray()
-            ]);
-            
-            // Index by product_id as string
-            $productDetailsMap = $productDetails->keyBy('product_id');
-            
+            // Index by product_id as string            
             return [
                 'id' => $order->id,
                 'user_id' => $order->user_id,
@@ -287,34 +271,15 @@
                 'payment_status' => $order->payment_status ?? 'pending',
                 'shipping_address' => $order->shipping_address ?? null,
                 'created_at' => $order->created_at->format('Y-m-d H:i:s'),
-                'items' => $order->items->map(function (OrderItem $item) use ($productDetailsMap) {
-                    // Convert ID to string for MongoDB lookup
-                    $productId = (string)$item->product_id;
-                    $details = $productDetailsMap->get($productId);
-                    
-                    // Safe image extraction with multiple fallbacks
-                    $image = '/defaultProduct.jpg';
-                    if ($details) {
-                        if (isset($details->images)) {
-                            if (is_array($details->images) && !empty($details->images)) {
-                                $image = $details->images[0];
-                            } elseif (is_string($details->images)) {
-                                // Attempt to parse JSON string
-                                $imagesArray = json_decode($details->images, true);
-                                if (is_array($imagesArray) && !empty($imagesArray)) {
-                                    $image = $imagesArray[0];
-                                }
-                            }
-                        }
-                    }
-                    
+                'items' => $order->items->map(function (OrderItem $item) {
+
                     return [
                         'id' => $item->id,
                         'product_id' => $item->product_id,
                         'price' => (float)$item->price,
                         'quantity' => $item->quantity,
                         'name' => $item->product ? $item->product->name : 'Unknown Product',
-                        'image' => $image,
+                        'image' => $item->product && $item->product->details ? $item->product->details->images[0] : null,
                     ];
                 }),
             ];

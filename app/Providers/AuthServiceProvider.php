@@ -42,7 +42,8 @@ class AuthServiceProvider extends ServiceProvider
         Brand::class => BrandPolicy::class,
         UserCredential::class => UserCredentialPolicy::class,
         CartItem::class => CartItemPolicy::class,
-        'App\Models\Metrics' => MetricsPolicy::class
+        'App\Models\Metrics' => MetricsPolicy::class,
+        \App\Models\Shipping::class => \App\Policies\ShippingPolicy::class,
     ];
 
     /**

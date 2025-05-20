@@ -168,16 +168,30 @@ final class CartItemResolver
     {
         $product = $cartItem->product;
         
+        // Get product details from MongoDB for consistent image handling
+        $productDetail = ProductDetail::where('product_id', (string)$product->id)->first();
+        
+        // Get image with proper fallback handling
+        $image = null;
+        if ($productDetail && !empty($productDetail->images)) {
+            if (is_string($productDetail->images)) {
+                $imagesArray = json_decode($productDetail->images, true);
+                $image = $imagesArray[0] ?? null;
+            } else {
+                $image = $productDetail->images[0] ?? null;
+            }
+        }
+        
         return [
             'id' => $cartItem->id,
             'quantity' => $cartItem->quantity,
             'product' => [
                 'product_id' => $product->id,
                 'name' => $product->name,
-                'price' => $product->price,
-                'image' => $product->image_url ?? null,
-                'stock' => $product->stock,
-                'status' => (bool) $product->status
+                'price' => (float)$product->price,
+                'image' => $image ?? $product->image_url ?? null,  // Use MongoDB image or fallback
+                'stock' => (int)$product->stock,
+                'status' => (bool)$product->status
             ]
         ];
     }

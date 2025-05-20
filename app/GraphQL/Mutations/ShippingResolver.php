@@ -47,7 +47,8 @@ final readonly class ShippingResolver
                 'shipping' => null,
             ];
         }
-        if (Gate::denies('create', [$order])) {
+        // Fix: Pass the Shipping::class as the first parameter for policy lookup
+        if (Gate::denies('create', [Shipping::class, $order])) {
             return [
                 'code' => 403,
                 'message' => 'You are not authorized to create shipping for this order',

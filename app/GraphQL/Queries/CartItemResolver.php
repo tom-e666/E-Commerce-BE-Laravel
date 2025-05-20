@@ -194,8 +194,7 @@ final class CartItemResolver
                 'stock' => (int)$cartItem->product->stock,
                 'status' => (bool)$cartItem->product->status,
                 'image' => $cartItem->product->details && !empty($cartItem->product->details->images) 
-                    ? $cartItem->product->details->images[0] 
-                    : null,
+                    ? $cartItem->product->details->images[0] : null,
             ],
         ];
         
