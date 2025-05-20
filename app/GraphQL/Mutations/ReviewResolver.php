@@ -18,10 +18,7 @@ class ReviewResolver
      */
     public function createReview($root, array $args)
     {
-        $user = AuthService::Auth();
-        if (!$user) {
-            return $this->error('Unauthorized', 401);
-        }
+        $user = auth('api')->user();
         
         // Validate order item exists and belongs to the user
         $orderItem = OrderItem::find($args['order_item_id']);
@@ -75,10 +72,7 @@ class ReviewResolver
      */
     public function updateReview($root, array $args)
     {
-        $user = AuthService::Auth();
-        if (!$user) {
-            return $this->error('Unauthorized', 401);
-        }
+        $user = auth('api')->user();
         
         $review = Review::find($args['review_id']);
         if (!$review) {
@@ -113,10 +107,7 @@ class ReviewResolver
      */
     public function deleteReview($root, array $args)
     {
-        $user = AuthService::Auth();
-        if (!$user) {
-            return $this->error('Unauthorized', 401);
-        }
+        $user = auth('api')->user();
         
         $review = Review::find($args['review_id']);
         if (!$review) {
