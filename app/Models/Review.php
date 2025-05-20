@@ -63,4 +63,11 @@ class Review extends Model
     {
         $this->attributes['order_item_id'] = (string)$value;
     }
+
+    public function product(){
+        return $this->belongsTo(Product::class, 'product_id', 'id');
+    }
+    public function user(){
+        return $this->belongsTo(UserCredential::class, 'user_id', 'id');
+    }
 }
