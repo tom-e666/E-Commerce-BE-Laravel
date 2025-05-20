@@ -7,7 +7,7 @@ use App\Models\Product;
 use App\GraphQL\Traits\GraphQLResponse;
 use App\Services\AuthService;
 use Illuminate\Support\Facades\Gate;
-
+use
 final class ReviewResolver
 {
     use GraphQLResponse;

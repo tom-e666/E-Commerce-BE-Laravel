@@ -148,7 +148,8 @@ type ProductItem {
   stock: Int!
   status: Boolean!
   brand_id: ID!
-  details: ProductDetails
+  details: ProductDetails!
+  weight: Float!
 }
 
 type ProductDetails {
@@ -191,18 +192,6 @@ type ProductItemResponse implements BaseResponse {
 extend type Query {
   getProduct(id: ID!): ProductItemResponse @field(resolver: "ProductResolver@getProduct")
   getProducts(status: String): ProductItemsResponse @field(resolver: "ProductResolver@getProducts")
-  getPaginatedProducts(
-    brand_id: ID
-    category_id: ID
-    min_price: Float
-    max_price: Float
-    status: String
-    search: String
-    sort_by: String
-    sort_order: String
-    page: Int
-    per_page: Int
-  ): ProductItemsResponse @field(resolver: "ProductResolver@getPaginatedProducts")
 }
 
 # Mutations
@@ -213,6 +202,7 @@ extend type Mutation {
     stock: Int!
     status: Boolean!
     brand_id: ID!
+    weight: Float!
     details: ProductDetailsInput!
   ): ProductItemResponse @field(resolver: "ProductResolver@createProduct") @guard(with: ["api"]) 
   
@@ -296,9 +286,11 @@ type CartItemsResponse implements BaseResponse {
 
 # Queries
 extend type Query {
-  getCartItems: CartItemsResponse @field(resolver: "CartItemResolver@getCartItems") @guard(with: ["api"])
-}
 
+  getCartItems(
+    user_id: ID
+  ): CartItemsResponse @field(resolver: "CartItemResolver@getCartItems") @guard(with: ["api"])
+}
 # Mutations
 extend type Mutation {
   addCartItem(

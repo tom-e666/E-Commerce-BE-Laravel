@@ -41,6 +41,7 @@ final class ProductResolver
             'stock' => 'required|integer|min:0',
             'status' => 'required|boolean',
             'brand_id' => 'required|exists:brands,id',
+            'weight' => 'required|numeric|min:0',
             'details' => 'required|array',
             'details.description' => 'required|string',
             'details.images' => 'required|array|min:1',
@@ -60,6 +61,7 @@ final class ProductResolver
                 'stock' => $args['stock'],
                 'status' => $args['status'],
                 'brand_id' => $args['brand_id'],
+                'weight' => $args['weight'],
             ]);
         
             if (!$product) {
@@ -74,7 +76,6 @@ final class ProductResolver
                 'keywords' => $details['keywords'],
                 'specifications' => $details['specifications'],
             ]);
-        
             if (!$productDetail) {
                 $product->delete();
                 return $this->error('Failed to create product details', 500);
