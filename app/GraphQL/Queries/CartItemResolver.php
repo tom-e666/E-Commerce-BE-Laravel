@@ -6,7 +6,7 @@ use App\Models\CartItem;
 use App\GraphQL\Traits\GraphQLResponse;
 use App\Services\AuthService;
 use Illuminate\Support\Facades\Gate;
-
+use Illuminate\Support\Facades\Log;
 final class CartItemResolver
 {
     use GraphQLResponse;
@@ -24,43 +24,47 @@ final class CartItemResolver
         if (!$user) {
             return $this->error('Unauthorized', 401);
         }
-        
-        // Check if user is viewing their own cart or has admin/staff privileges
         if (isset($args['user_id']) && $args['user_id'] !== $user->id) {
-            // If user is trying to view someone else's cart, check viewAny policy
+
             if (Gate::denies('viewAny', CartItem::class)) {
                 return $this->error('You are not authorized to view other users\' cart items', 403);
             }
-            $userId = $args['user_id'];
+            $userId = $args['user_id'];            
         } else {
             $userId = $user->id;
         }
-        
-        $cartItems = CartItem::where('user_id', $userId)
-            ->select('id', 'product_id', 'quantity', 'updated_at') 
-            ->with(['product' => function($query) {
-                $query->with('details'); // Eager load product details
-            }])
-            ->orderBy('updated_at', 'desc')
-            ->get();
-        
-        // Filter out items the user doesn't have permission to view
-        $cartItems = $cartItems->filter(function($item) {
-            return Gate::allows('view', $item);
-        });
-        
+        $cartItems = $user->cart_items;
         if ($cartItems->isEmpty()) {
             return $this->success([
                 'cart_items' => [], // Return empty array instead of null for consistency
             ], 'No items in cart', 200);
         }
-        
+        foreach($cartItems as $item) {
+            $item->product= $item->product()->with('details')->first();
+        }
+        // $cartItems = $cartItems->where('user_id', $userId)
+        //     ->select('id', 'product_id', 'quantity', 'updated_at')
+        //     ->with(['product' => function($query) {
+        //         $query->with('details');
+        //     }])
+        //     ->orderBy('updated_at', 'desc')
+        //     ->get();
+        // Filter out items the user doesn't have permission to view
+        if ($cartItems->isEmpty()) {
+            return $this->success([
+                'cart_items' => [], // Return empty array instead of null for consistency
+            ], 'No items in cart', 200);
+        }
+        Log::info('Cart items retrieved successfully', [
+            'user_id' => $userId,
+            'cart_items' => $cartItems->toArray(),
+        ]);
         $formattedCartItems = $cartItems->map(function ($item) {
             // Handle potential null product
             if (!$item->product) {
                 return null; // Will be filtered out below
             }
-            
+            $item->product->details = $item->product->details ?? null;
             return [
                 'id' => $item->id,
                 'quantity' => $item->quantity,
@@ -75,13 +79,11 @@ final class CartItemResolver
                         : null,
                 ],
             ];
-        })->filter()->values(); // Filter out null items and reindex array
-        
+        })->filter()->values(); // Filter out null items and reindex array        
         return $this->success([
             'cart_items' => $formattedCartItems,
         ], 'Success', 200);
     }
-    
     /**
      * Get cart total items count and price summary
      * 
