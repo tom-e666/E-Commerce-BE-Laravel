@@ -57,6 +57,8 @@ type AuthPayload implements BaseResponse {
   access_token: String
   refresh_token: String
   expires_at: Int
+  role: String
+  
 }
 
 input UserLogInput {

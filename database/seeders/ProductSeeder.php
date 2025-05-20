@@ -2,112 +2,102 @@
 
 namespace Database\Seeders;
 
-use App\Models\Brand;
+use Illuminate\Database\Seeder;
 use App\Models\Product;
 use App\Models\ProductDetail;
-use Illuminate\Database\Seeder;
+use App\Models\Brand;
+use App\Models\Category;
+use Faker\Factory as Faker;
+use Illuminate\Support\Facades\DB;
 
 class ProductSeeder extends Seeder
 {
+    /**
+     * Run the database seeds.
+     *
+     * @return void
+     */
     public function run()
     {
-        $brands = Brand::all()->pluck('id', 'name')->toArray();
+        $faker = Faker::create();
         
-        // Product data with details
-        $products = [
-            [
-                'name' => 'iPhone 13 Pro',
-                'price' => 999.99,
-                'stock' => 50,
-                'status' => true,
-                'brand_name' => 'Apple',
-                'details' => [
-                    'description' => 'The latest iPhone with A15 Bionic chip, Pro camera system, and Super Retina XDR display with ProMotion.',
-                    'specifications' => [
-                        ['name' => 'Display', 'value' => '6.1-inch Super Retina XDR'],
-                        ['name' => 'Processor', 'value' => 'A15 Bionic'],
-                        ['name' => 'Storage', 'value' => '128GB'],
-                        ['name' => 'Camera', 'value' => 'Triple 12MP Pro camera system']
-                    ],
-                    'images' => [
-                        'https://example.com/images/iphone13pro_1.jpg',
-                        'https://example.com/images/iphone13pro_2.jpg'
-                    ],
-                    'keywords' => ['iPhone', 'Apple', 'smartphone', 'iOS']
-                ]
-            ],
-            [
-                'name' => 'Samsung Galaxy S21',
-                'price' => 799.99,
-                'stock' => 45,
-                'status' => true,
-                'brand_name' => 'Samsung',
-                'details' => [
-                    'description' => 'Flagship Android smartphone with powerful camera, Snapdragon processor, and dynamic AMOLED display.',
-                    'specifications' => [
-                        ['name' => 'Display', 'value' => '6.2-inch Dynamic AMOLED'],
-                        ['name' => 'Processor', 'value' => 'Snapdragon 888'],
-                        ['name' => 'Storage', 'value' => '128GB'],
-                        ['name' => 'Camera', 'value' => 'Triple camera system']
-                    ],
-                    'images' => [
-                        'https://example.com/images/galaxys21_1.jpg',
-                        'https://example.com/images/galaxys21_2.jpg'
-                    ],
-                    'keywords' => ['Samsung', 'Galaxy', 'Android', 'smartphone']
-                ]
-            ],
-            [
-                'name' => 'Sony WH-1000XM4',
-                'price' => 349.99,
-                'stock' => 30,
-                'status' => true,
-                'brand_name' => 'Sony',
-                'details' => [
-                    'description' => 'Industry-leading noise cancelling wireless headphones with exceptional sound quality.',
-                    'specifications' => [
-                        ['name' => 'Type', 'value' => 'Over-ear'],
-                        ['name' => 'Battery Life', 'value' => '30 hours'],
-                        ['name' => 'Connectivity', 'value' => 'Bluetooth 5.0'],
-                        ['name' => 'Features', 'value' => 'Active Noise Cancellation, Touch controls']
-                    ],
-                    'images' => [
-                        'https://example.com/images/sony_wh1000xm4_1.jpg',
-                        'https://example.com/images/sony_wh1000xm4_2.jpg'
-                    ],
-                    'keywords' => ['Sony', 'headphones', 'noise-cancelling', 'wireless']
-                ]
-            ],
-            // Add more products as needed
-        ];
-        
-        // Create products with details
-        foreach ($products as $productData) {
-            // Get brand ID from name
-            $brandName = $productData['brand_name'];
-            $brandId = $brands[$brandName] ?? null;
+        // Create some brands if none exist
+        if (Brand::count() == 0) {
+            $brands = [
+                ['name' => 'Apple'],
+                ['name' => 'Samsung'],
+                ['name' => 'Dell'],
+                ['name' => 'MSI'],
+                ['name' => 'Asus'],
+                ['name' => 'Lenovo'],
+                ['name' => 'HP'],
+                ['name' => 'Xiaomi'],
+            ];
             
-            if (!$brandId) {
-                continue; // Skip if brand not found
+            foreach ($brands as $brand) {
+                Brand::create($brand);
+            }
+        }
+        
+        // Get all brand IDs
+        $brandIds = Brand::pluck('id')->toArray();
+        
+        // Clear any existing MongoDB product details to avoid duplicates
+        DB::connection('mongodb')->table('product_detail')->delete();
+        
+        // Create 50 random products
+        $products = [];
+        $productDetails = [];
+        
+        for ($i = 0; $i < 50; $i++) {
+            // Create the SQL product
+            $product = new Product([
+                'name' => $faker->words(3, true) . ' ' . $faker->randomElement(['Laptop', 'Phone', 'Tablet', 'Monitor']),
+                'price' => $faker->randomFloat(2, 100, 2000),
+                'stock' => $faker->numberBetween(0, 100),
+                'status' => $faker->boolean(80), 
+                'brand_id' => $faker->randomElement($brandIds),
+                'weight' => $faker->randomFloat(2, 0.5, 5),
+            ]);
+            
+            $product->save();
+            $products[] = $product;
+            
+            // Create MongoDB product details
+            $images = [];
+            $imageCount = $faker->numberBetween(1, 5);
+            for ($j = 0; $j < $imageCount; $j++) {
+                $images[] = "https://picsum.photos/id/" . $faker->numberBetween(1, 1000) . "/800/600";
+            }
+            $specifications = [];
+            $specCount = $faker->numberBetween(3, 8);
+            for ($j = 0; $j < $specCount; $j++) {
+                $specifications[] = [
+                    'name' => $faker->word,
+                    'value' => $faker->sentence(3),
+                ];
             }
             
-            // Create product
-            $product = Product::create([
-                'name' => $productData['name'],
-                'price' => $productData['price'],
-                'stock' => $productData['stock'],
-                'status' => $productData['status'],
-                'brand_id' => $brandId
+            $keywords = [];
+            $keywordCount = $faker->numberBetween(3, 8);
+            for ($j = 0; $j < $keywordCount; $j++) {
+                $keywords[] = strtoupper($faker->word);
+            }
+            
+            $productDetail = new ProductDetail([
+                'product_id' => (string)$product->id,
+                'description' => $faker->paragraphs(3, true),
+                'images' => $images,
+                'keywords' => $keywords,
+                'specifications' => $specifications,
             ]);
             
-            // Create product details
-            ProductDetail::create([
-                'product_id' => $product->id,
-                'description' => $productData['details']['description'],
-                'specifications' => $productData['details']['specifications'],
-                'images' => $productData['details']['images'],
-                'keywords' => $productData['details']['keywords']
-            ]);
+            $productDetail->save();
+            $productDetails[] = $productDetail;
+            
+            $this->command->info("Created product: {$product->name}");
         }
+        
+        $this->command->info('Created ' . count($products) . ' products with details');
     }
 }

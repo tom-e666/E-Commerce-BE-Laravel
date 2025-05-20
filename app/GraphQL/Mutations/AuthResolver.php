@@ -85,7 +85,14 @@ final readonly class AuthResolver
             'access_token' => $token,
             'refresh_token' => $refreshToken,
             'expires_at' => JWTAuth::factory()->getTTL() * 60,
-            'user' => $user,
+            'user' => [
+                'id' => $user->id,
+                'email' => $user->email,
+                'full_name' => $user->full_name,
+                'phone' => $user->phone,
+                'role' => $user->role,  // Added role field
+                'email_verified' => $user->email_verified,
+            ],
         ], 'Login successful');
     }
 
@@ -132,6 +139,14 @@ final readonly class AuthResolver
             'access_token' => $newAccessToken,
             'refresh_token' => $refreshToken,
             'expires_at' => JWTAuth::factory()->getTTL() * 60,
+            'user' => [
+                'id' => $user->id,
+                'email' => $user->email,
+                'full_name' => $user->full_name,
+                'phone' => $user->phone,
+                'role' => $user->role,  // Added role field
+                'email_verified' => $user->email_verified,
+            ],
         ], 'Token refreshed successfully');
     }
 

@@ -270,8 +270,7 @@ final readonly class OrderResolver
             'shipping_address' => $order->shipping_address ?? null,
             'created_at' => $order->created_at->format('Y-m-d H:i:s'),
             'items' => $order->items->map(function (OrderItem $item) use ($productDetails) {
-                // Get product details from the pre-fetched collection
-                $details = $productDetails->get((string)$item->product_id);
+                $details = $productDetails->get($item->product_id);
                 
                 return [
                     'id' => $item->id,
@@ -279,7 +278,6 @@ final readonly class OrderResolver
                     'price' => (float)$item->price,
                     'quantity' => $item->quantity,
                     'name' => $item->product ? $item->product->name : 'Unknown Product',
-                    // Get image from MongoDB details if available
                     'image' => $details && !empty($details->images) ? $details->images[0] : null,
                 ];
             }),
@@ -317,7 +315,6 @@ final readonly class OrderResolver
             return $this->error('Order not found', 404);
         }
         
-        // Check if user can view this order using policy
         if (Gate::denies('view', $order)) {
             return $this->error('You are not authorized to view this order', 403);
         }
@@ -410,202 +407,6 @@ final readonly class OrderResolver
             'order' => $order->load('items.product'),
         ], 'Order delivered successfully', 200);
     }
-    /**
-     * Get a specific order by ID
-     * 
-     * @param mixed $_ Root value (not used)
-     * @param array $args Query arguments
-     * @return array Response with order data or error
-     */
-    public function getOrder($_, array $args): array
-    {
-        try
-        {
-            $validator = Validator::make($args, [
-                'order_id' => 'required|exists:orders,id',
-            ]);
-            if ($validator->fails()) {
-                return [
-                    'code' => 400,
-                    'message' => $validator->errors()->first(),
-                    'order' => null,
-                ];
-            }
-            $user = AuthService::Auth(); // pre-handled by middleware
-            $order = Order::where('id', $args['order_id'])->where('user_id', $user->id)->first();
-            if ($order === null) {
-                return [
-                    'code' => 404,
-                    'message' => 'Order not found',
-                    'order' => null,
-                ];
-            }
-            $order->status = 'confirmed';
-            $order->save();
-            foreach ($order->items as $orderItem) {
-                $this->updateProductStock($orderItem);
-            }
-            return [
-                'code' => 200,
-                'message' => 'success',
-                'order' => $this->formatOrderResponse($order),
-            ];
-        }catch(\Exception $e){
-            return [
-                'code' => 500,
-                'message' => 'Internal server error',
-                'order' => null,
-            ];
-        }
-    }
-    /**
-     * Get orders for a specific user (admin only)
-     * 
-     * @param mixed $_ Root value (not used)
-     * @param array $args Query arguments
-     * @return array Response with orders data or error
-     */
-    public function getOrdersFromUser($_, array $args): array
-    {
-        $user = AuthService::Auth(); // pre-handled by middleware
-        if(!$user){
-            return [
-                'code' => 401,
-                'message' => 'Unauthorized',
-                'order' => null,
-            ];
-        }
-        if(!isset($args['order_id'])){
-            return [
-                'code' => 400,
-                'message' => 'order_id is required',
-                'order' => null,
-            ];
-        }
-        try
-        {
-            $order=Order::where('id',$args['order_id'])->where('user_id',$user->id)->first();
-        if($order===null){
-            return [
-                'code' => 404,
-                'message' => 'order not found',
-                'order' => null,
-            ];
-        }
-        $order->status='cancelled';
-        $order->save();
-        foreach ($order->items as $orderItem) {
-            $this->restoreProductStock($orderItem);
-        }
-        return [
-            'code' => 200,
-            'message' => 'success',
-            'order' => $this->formatOrderResponse($order),
-        ];
-        }catch(\Exception $e){
-            return [
-                'code' => 500,
-                'message' => 'Internal server error',
-                'order' => null,
-            ];
-        }
-    }
-    /**
-     * Get orders for the authenticated user
-     * 
-     * @param mixed $_ Root value (not used)
-     * @param array $args Query arguments
-     * @return array Response with orders data or error
-     */
-    public function getUserOrders($_, array $args): array
-    {
-        $user = AuthService::Auth(); // pre-handled by middleware
-        if(!$user){
-            return [
-                'code' => 401,
-                'message' => 'Unauthorized',
-                'order' => null,
-            ];
-        }
-        if(!isset($args['order_id'])){
-            return [
-                'code' => 400,
-                'message' => 'order_id is required',
-                'order' => null,
-            ];
-        }
-        try
-        {
-            $order=Order::where('id',$args['order_id'])->where('user_id',$user->id)->first();
-        if($order===null){
-            return [
-                'code' => 404,
-                'message' => 'order not found',
-                'order' => null,
-            ];
-        }
-        $order->status='shipped';
-        $order->save();
-        return [
-            'code' => 200,
-            'message' => 'success',
-            'order' => $this->formatOrderResponse($order),
-        ];
-        }catch(\Exception $e){
-            return [
-                'code' => 500,
-                'message' => 'Internal server error',
-                'order' => null,
-            ];
-        }
-    }
-    /**
-     * Get all orders with filtering options (admin/staff only)
-     * 
-     * @param mixed $_ Root value (not used)
-     * @param array $args Query arguments
-     * @return array Response with orders data or error
-     */
-    public function getAllOrders($_, array $args): array
-    {
-        $user = AuthService::Auth(); // pre-handled by middleware
-        if(!$user){
-            return [
-                'code' => 401,
-                'message' => 'Unauthorized',
-                'order' => null,
-            ];
-        }
-        if(!isset($args['order_id'])){
-            return [
-                'code' => 400,
-                'message' => 'order_id is required',
-                'order' => null,
-            ];
-        }
-        try
-        {
-            $order=Order::where('id',$args['order_id'])->where('user_id',$user->id)->first();
-        if($order===null){
-            return [
-                'code' => 404,
-                'message' => 'order not found',
-                'order' => null,
-            ];
-        }
-        $order->status='delivered';
-        $order->save();
-        return [
-            'code' => 200,
-            'message' => 'success',
-            'order' => $this->formatOrderResponse($order),
-        ];
-        }catch(\Exception $e){
-            return [
-                'code' => 500,
-                'message' => 'Internal server error',
-                'order' => null,
-            ];
-        }
-    }
+
+
 }

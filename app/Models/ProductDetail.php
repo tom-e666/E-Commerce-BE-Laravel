@@ -3,11 +3,17 @@
 namespace App\Models;
 
 use MongoDB\Laravel\Eloquent\Model;
+use MongoDB\Laravel\Eloquent\HybridRelations;
+use App\Models\Product;
 
 class ProductDetail extends Model
 {
+    use HybridRelations;
+    
     protected $connection = 'mongodb';
+    // Keep collection name consistent with your actual MongoDB collection
     protected $collection = 'product_details';
+    
     protected $fillable = [
         'product_id',
         'description',
@@ -15,19 +21,33 @@ class ProductDetail extends Model
         'keywords',
         'specifications',
     ];
+    
     protected $casts = [
+        'product_id' => 'integer', // Cast product_id as integer consistently
         'images' => 'array',
         'keywords' => 'array',
         'specifications' => 'array',
     ];
     
     /**
-     * Get product data through an accessor instead of a relationship
-     * This avoids cross-database relationship issues
+     * Always set product_id as integer when saving to MongoDB
      */
-    public function getProductAttribute()
+    public function setProductIdAttribute($value)
     {
-        return Product::find($this->product_id);
+        $this->attributes['product_id'] = (int)$value;
+    }
+    
+    /**
+     * Ensure product_id is returned as integer
+     */
+    public function getProductIdAttribute($value)
+    {
+        return (int)$value;
+    }
+    
+    public function product()
+    {
+        return $this->belongsTo(Product::class, 'product_id', 'id');
     }
     
     /**
@@ -39,13 +59,5 @@ class ProductDetail extends Model
             ->orderBy('created_at', 'desc')
             ->limit($amount)
             ->get();
-    }
-    
-    /**
-     * Convert IDs to strings before storing in MongoDB
-     */
-    public function setProductIdAttribute($value)
-    {
-        $this->attributes['product_id'] = (string)$value;
     }
 }

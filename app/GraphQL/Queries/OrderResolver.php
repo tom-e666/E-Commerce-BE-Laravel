@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use App\GraphQL\Traits\GraphQLResponse;
 use App\Models\ProductDetail;
-
+use Illuminate\Support\Facades\Log;
 final readonly class OrderResolver
 {
     use GraphQLResponse;
@@ -47,8 +47,9 @@ final readonly class OrderResolver
         $productIds = $order->items->pluck('product_id')->toArray();
         
         // Load all MongoDB product details in a single query
-        $productDetails = ProductDetail::whereIn('product_id', $productIds)->get()->keyBy('product_id');
         
+        $productDetails = ProductDetail::whereIn('product_id', $productIds)->get()->keyBy('product_id');
+        Log::info('Product details loaded from MongoDB', ['product_details' => $productDetails]);
         // Format the response
         $formattedOrder = [
             'id' => $order->id,

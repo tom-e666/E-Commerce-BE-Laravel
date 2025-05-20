@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Gate;
 use Nuwave\Lighthouse\Execution\ResolveInfo;
 use Nuwave\Lighthouse\Execution\HttpGraphQLContext;
 use App\Services\AuthService;
-
+use Illuminate\Support\Facades\Log;
 final class ProductResolver
 {
     use GraphQLResponse;
@@ -27,12 +27,10 @@ final class ProductResolver
         try {
             $query = Product::query();
             
-            // Filter by status if provided, otherwise default to active products
             if (isset($args['status'])) {
                 if ($args['status'] === 'all') {
                     $user = AuthService::Auth();
                     
-                    // Check if user can view all products including inactive using policy
                     if (!$user || Gate::denies('viewAny', Product::class)) {
                         $query->where('status', true);
                     }
@@ -61,14 +59,9 @@ final class ProductResolver
             if (isset($args['price_max'])) {
                 $query->where('price', '<=', $args['price_max']);
             }
-            
-            
-            // Validate sort direction
-            
-            // Get products with sorting
             $products = $query->get();
-            
-            // Filter products based on view policy
+            $productDetails = ProductDetail::all();
+            Log::info('Product Details all', ['details' => $productDetails]);
             $user = AuthService::Auth();
             if ($user) {
                 $products = $products->filter(function ($product) use ($user) {
@@ -82,7 +75,6 @@ final class ProductResolver
             
             return $this->success([
                 'products' => $formattedProducts,
-                'total' => $formattedProducts->count(),
             ], 'Success', 200);
         } catch (\Exception $e) {
             return $this->error('Failed to fetch products: ' . $e->getMessage(), 500);
@@ -103,13 +95,11 @@ final class ProductResolver
                 return $this->error('id is required', 400);
             }
             
-            $product = Product::with(['details', 'category', 'brand'])->find($args['id']);
-            
+            $product = Product::find($args['id']);
             if ($product === null) {
                 return $this->error('Product not found', 404);
             }
             
-            // Check if user can view the product using policy
             if (!$product->status) {
                 $user = AuthService::Auth();
                 
@@ -117,7 +107,6 @@ final class ProductResolver
                     return $this->error('Product not available', 404);
                 }
             }
-            
             return $this->success([
                 'product' => $this->formatProductResponse($product),
             ], 'Success', 200);
@@ -125,64 +114,6 @@ final class ProductResolver
             return $this->error('Failed to fetch product: ' . $e->getMessage(), 500);
         }
     }
-
-    /**
-     * Get paginated products with filters
-     *
-     * @param mixed $root Root value (not used)
-     * @param array $args Query arguments
-     * @param HttpGraphQLContext $context GraphQL context
-     * @param ResolveInfo $resolveInfo GraphQL resolve info
-     * @return array Response with paginated products or error
-     */
-    public function getPaginatedProducts($root, array $args, HttpGraphQLContext $context, ResolveInfo $resolveInfo): array
-    {
-        try {
-            $request = new Request($args);
-            $productQuery = new ProductQuery();
-            
-            // Check if user can view inactive products using policy
-            $user = AuthService::Auth();
-            $canViewInactive = $user && Gate::allows('viewAny', Product::class);
-            
-            // Set default status filter if not provided and user doesn't have appropriate permission
-            if (!isset($args['status']) && !$canViewInactive) {
-                $request->merge(['status' => 'active']);
-            }
-            
-            $products = $productQuery->paginate($request);
-            $totalProducts = $productQuery->getTotalCount();
-            
-            // Apply policy filter for paginated results if necessary
-            if ($user && !$canViewInactive) {
-                $products = $products->filter(function ($product) use ($user) {
-                    return Gate::allows('view', $product);
-                });
-            }
-            
-            $formattedProducts = $products->map(function ($product) {
-                return $this->formatProductResponse($product);
-            });
-
-            return $this->success([
-                'products' => $formattedProducts,
-                'total' => $totalProducts,
-                'current_page' => $args['page'] ?? 1,
-                'per_page' => $args['per_page'] ?? 10,
-                'last_page' => ceil($totalProducts / ($args['per_page'] ?? 10)),
-            ], 'Success', 200);
-        } catch (\Exception $e) {
-            return $this->error('Failed to fetch paginated products: ' . $e->getMessage(), 500);
-        }
-    }
-    
-    /**
-     * Search products with advanced filters and full-text search
-     *
-     * @param mixed $_ Root value (not used)
-     * @param array $args Query arguments
-     * @return array Response with search results or error
-     */
     public function searchProducts($_, array $args): array
     {
         try {
@@ -312,7 +243,7 @@ final class ProductResolver
     private function formatProductResponse(Product $product): array
     {
         $productDetail = $product->details;
-        
+        Log::info(' 121 Product Details ', ['details' => $productDetail]);
         $result = [
             'id' => $product->id,
             'name' => $product->name,
@@ -324,13 +255,10 @@ final class ProductResolver
             'created_at' => $product->created_at,
             'updated_at' => $product->updated_at,
         ];
-        
-        // Add brand name if brand is loaded
         if ($product->relationLoaded('brand') && $product->brand) {
             $result['brand_name'] = $product->brand->name;
         }
         
-        // Add category name if category is loaded
         if ($product->relationLoaded('category') && $product->category) {
             $result['category_name'] = $product->category->name;
         }
@@ -340,7 +268,7 @@ final class ProductResolver
             $result['details'] = [
                 'description' => $productDetail->description,
                 'specifications' => $productDetail->specifications,
-                'images' => $productDetail->images ? $productDetail->images[0] : null,
+                'images' => $productDetail->images,
                 'keywords' => $productDetail->keywords,
             ];
         } else {

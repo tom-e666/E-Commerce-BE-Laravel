@@ -56,7 +56,6 @@ final readonly class BrandResolver
             if (Gate::denies('update', $brand)) {
                 return $this->error('You are not authorized to update this brand', 403);
             }
-            
             $brand->update([
                 'name' => $args['name'],
             ]);
