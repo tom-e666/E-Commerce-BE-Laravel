@@ -47,6 +47,7 @@ class SupportTicket extends Model
 
     public function responses()
     {
-        return $this->hasMany(SupportTicketResponse::class, 'ticket_id');
+        return $this->hasMany(SupportTicketResponse::class, 'ticket_id')
+            ->orderBy('created_at', 'asc'); // Add ordering
     }
 }

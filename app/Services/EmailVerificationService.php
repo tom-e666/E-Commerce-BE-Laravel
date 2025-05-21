@@ -11,9 +11,8 @@ use App\Mail\VerifyEmail;
 
 class EmailVerificationService
 {
-    public function __construct(EmailVerificationService $emailVerificationService)
+    public function __construct()
 {
-    $this->emailVerificationService = $emailVerificationService;
 }
 public function register($_, array $args)
 {
@@ -30,7 +29,7 @@ public function register($_, array $args)
     ]);
     
     // Send verification email
-    $this->emailVerificationService->sendVerificationEmail($user);
+    $this->sendVerificationEmail($user);
     
     return $this->success([
         'user' => $user,

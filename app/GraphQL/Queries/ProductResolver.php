@@ -11,6 +11,7 @@ use Nuwave\Lighthouse\Execution\ResolveInfo;
 use Nuwave\Lighthouse\Execution\HttpGraphQLContext;
 use App\Services\AuthService;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 final class ProductResolver
 {
@@ -124,10 +125,7 @@ final class ProductResolver
                 $query->where('status', true);
             }
             
-            // Apply other filters from getProducts method
-            if (isset($args['category_id']) && !empty($args['category_id'])) {
-                $query->where('category_id', $args['category_id']);
-            }
+            // Remove category_id filtering since the column doesn't exist
             
             if (isset($args['brand_id']) && !empty($args['brand_id'])) {
                 $query->where('brand_id', $args['brand_id']);
@@ -247,12 +245,6 @@ final class ProductResolver
                 // Default to showing only active products
                 $query->where('status', true);
             }
-            
-            // Apply category filter if provided
-            if (isset($args['category_id']) && !empty($args['category_id'])) {
-                $query->where('category_id', $args['category_id']);
-            }
-            
             // Apply brand filter if provided
             if (isset($args['brand_id']) && !empty($args['brand_id'])) {
                 $query->where('brand_id', $args['brand_id']);
@@ -271,11 +263,15 @@ final class ProductResolver
             if (isset($args['search']) && !empty($args['search'])) {
                 $searchTerm = $args['search'];
                 $query->where(function($q) use ($searchTerm) {
-                    $q->where('name', 'like', "%{$searchTerm}%")
-                      ->orWhereHas('details', function($q) use ($searchTerm) {
-                          $q->where('description', 'like', "%{$searchTerm}%")
-                            ->orWhere('keywords', 'like', "%{$searchTerm}%");
-                      });
+                    $q->where('name', 'like', "%{$searchTerm}%");
+                    
+                    // Check if details relationship exists before using it
+                    if (method_exists(Product::class, 'details')) {
+                        $q->orWhereHas('details', function($q) use ($searchTerm) {
+                            $q->where('description', 'like', "%{$searchTerm}%")
+                                ->orWhere('keywords', 'like', "%{$searchTerm}%");
+                        });
+                    }
                 });
             }
             
@@ -298,16 +294,11 @@ final class ProductResolver
             $perPage = $args['per_page'] ?? 10;
             
             // Eager load relationships to avoid N+1 queries
-            $products = $query->with(['details', 'category', 'brand'])
+            $products = $query->with(['details', 'brand'])
                              ->paginate($perPage, ['*'], 'page', $page);
             
             // Get product IDs for batch MongoDB query
             $productIds = collect($products->items())->pluck('id')->toArray();
-            
-            // Batch load product details from MongoDB (in case eager loading didn't work properly)
-            if (empty(ProductDetail::first())) {
-                Log::info('No product details found in MongoDB');
-            }
             
             $formattedProducts = collect($products->items())->map(function ($product) {
                 return $this->formatProductResponse($product);
@@ -350,18 +341,16 @@ final class ProductResolver
             'stock' => (int) $product->stock,
             'status' => (bool) $product->status,
             'brand_id' => $product->brand_id,
-            'category_id' => $product->category_id,
             'created_at' => $product->created_at,
             'updated_at' => $product->updated_at,
             'weight' => $product->weight,
         ];
+        
         if ($product->relationLoaded('brand') && $product->brand) {
             $result['brand_name'] = $product->brand->name;
         }
         
-        if ($product->relationLoaded('category') && $product->category) {
-            $result['category_name'] = $product->category->name;
-        }
+        // Remove category_id and category_name from the response
         
         // Add product details if available
         if ($productDetail) {

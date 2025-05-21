@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Models\UserCredential;
+use Illuminate\Auth\Access\HandlesAuthorization;
 
 class MetricsPolicy
 {

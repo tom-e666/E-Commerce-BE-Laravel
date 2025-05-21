@@ -1,3 +1,7 @@
 <?php
 namespace App\Models;
-class metrics{}
+// Fix: Class name should match filename with proper capitalization
+class Metrics
+{
+    // ...existing code...
+}

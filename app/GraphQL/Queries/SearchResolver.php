@@ -8,6 +8,7 @@ use App\Models\Brand;
 use App\Services\SearchEnrichmentService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class SearchResolver
 {
@@ -30,10 +31,12 @@ class SearchResolver
         
         // Extract parameters
         $query = $args['query'] ?? '';
+        $page = $args['page'] ?? 1;
+        $perPage = $args['perPage'] ?? 10;
         
         // Process the query with our enrichment service
         $searchParams = $this->searchService->processQuery($query);
-        
+        Log::info('Search parameters: ', $searchParams);
         // Extract processed data
         $searchTerms = $searchParams['search_terms'];
         $brands = $searchParams['filters']['brands'] ?? [];
@@ -43,24 +46,24 @@ class SearchResolver
         // Start building query
         $productsQuery = Product::query()->where('status', true);
         
-        // Apply search terms - modified for MongoDB compatibility
         if (!empty($searchTerms)) {
             $productsQuery->where(function($q) use ($searchTerms) {
                 foreach ($searchTerms as $term) {
                     if (empty(trim($term))) continue;
                     
                     $term = trim($term);
-                    // Use MongoDB compatible regex search
                     $q->orWhere('name', 'like', "%{$term}%");
-                    // For MongoDB collections, we need to use a different approach for JSON fields
-                    // This is a placeholder - adjust based on your actual MongoDB schema
+                    
+                    $q->orWhereHas('details', function($detailsQuery) use ($term) {
+                        $detailsQuery->where('description', 'like', "%{$term}%")
+                                    ->orWhere('keywords', 'like', "%{$term}%");
+                    });
                 }
             });
         }
         
         // Apply brand filter
         if (!empty($brands)) {
-            // MongoDB compatible way to filter by related brand
             $brandIds = Brand::whereIn('name', $brands)->pluck('id')->toArray();
             $productsQuery->whereIn('brand_id', $brandIds);
         }
@@ -73,10 +76,10 @@ class SearchResolver
             $productsQuery->where('price', '<=', $priceRange['max']);
         }
         
-        // Get total count
+        // Get total count before pagination
         $totalCount = $productsQuery->count();
         
-        // Apply sort - MongoDB compatible
+        // Apply sort
         switch ($sortBy) {
             case 'price_low':
                 $productsQuery->orderBy('price', 'asc');
@@ -88,12 +91,13 @@ class SearchResolver
                 $productsQuery->orderBy('created_at', 'desc');
                 break;
             default:
-                // For MongoDB we need a simpler relevance sort
                 $productsQuery->orderBy('id', 'desc'); // Default sort
         }
         
-        // Get products
-        $products = $productsQuery->get();
+        // Get products - we'll get all results since you mentioned there's an issue with pagination
+        // If you want to re-add pagination, replace this with:
+        // $products = $productsQuery->with('details')->paginate($perPage, ['*'], 'page', $page);
+        $products = $productsQuery->with('details')->get();
         
         // Get filter options
         $filters = $this->getFilterOptions($searchParams);
@@ -120,45 +124,57 @@ class SearchResolver
     {
         $searchTerms = $searchParams['search_terms'];
         
-        // Get brand filter options
-        $brands = Brand::whereHas('products', function($query) use ($searchTerms) {
-            $query->where('status', true);
-            if (!empty($searchTerms)) {
-                $query->where(function($q) use ($searchTerms) {
-                    foreach ($searchTerms as $term) {
-                        if (empty(trim($term))) continue;
-                        
-                        $term = '%' . trim($term) . '%';
-                        $q->orWhere('name', 'like', $term)
-                          ->orWhereRaw("JSON_EXTRACT(details, '$.description') LIKE ?", [$term]);
-                    }
-                });
-            }
-        })
-        ->select('id', 'name', DB::raw('(SELECT COUNT(*) FROM products WHERE products.brand_id = brands.id AND products.status = 1) as count'))
-        ->orderBy('count', 'desc')
-        ->limit(10)
-        ->get()
-        ->map(function($brand) {
-            return [
-                'id' => $brand->id,
-                'name' => $brand->name,
-                'count' => $brand->count
-            ];
-        });
-        
-        // Get price range
-        $priceStats = Product::where('status', true)
-            ->selectRaw('MIN(price) as min_price, MAX(price) as max_price')
-            ->first();
+        try {
+            // Get brand filter options - fix the issue with JSON_EXTRACT
+            $brands = Brand::whereHas('products', function($query) use ($searchTerms) {
+                $query->where('status', true);
+                if (!empty($searchTerms)) {
+                    $query->where(function($q) use ($searchTerms) {
+                        foreach ($searchTerms as $term) {
+                            if (empty(trim($term))) continue;
+                            
+                            $term = '%' . trim($term) . '%';
+                            $q->orWhere('name', 'like', $term);
+                            // Don't try to use JSON_EXTRACT on details column
+                        }
+                    });
+                }
+            })
+            ->select('id', 'name', DB::raw('(SELECT COUNT(*) FROM products WHERE products.brand_id = brands.id AND products.status = 1) as count'))
+            ->orderBy('count', 'desc')
+            ->limit(10)
+            ->get()
+            ->map(function($brand) {
+                return [
+                    'id' => $brand->id,
+                    'name' => $brand->name,
+                    'count' => $brand->count
+                ];
+            });
             
-        return [
-            'brands' => $brands,
-            'categories' => [], 
-            'price_range' => [
-                'min' => (float) ($priceStats->min_price ?? 0),
-                'max' => (float) ($priceStats->max_price ?? 1000)
-            ]
-        ];
+            // Get price range
+            $priceStats = Product::where('status', true)
+                ->selectRaw('MIN(price) as min_price, MAX(price) as max_price')
+                ->first();
+                
+            return [
+                'brands' => $brands,
+                'categories' => [], 
+                'price_range' => [
+                    'min' => (float) ($priceStats->min_price ?? 0),
+                    'max' => (float) ($priceStats->max_price ?? 1000)
+                ]
+            ];
+        } catch (\Exception $e) {
+            Log::error('Error getting filter options: ' . $e->getMessage());
+            return [
+                'brands' => [],
+                'categories' => [],
+                'price_range' => [
+                    'min' => 0,
+                    'max' => 1000
+                ]
+            ];
+        }
     }
 }

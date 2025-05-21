@@ -81,12 +81,23 @@ class UserCredential extends Authenticatable implements JWTSubject, MustVerifyEm
     {
         return $this->hasMany(CartItem::class, 'user_id', 'id');
     }
+    /**
+     * Check if user has admin role
+     * 
+     * @return bool
+     */
     public function isAdmin(): bool
     {
-        return $this->role === self::ROLE_ADMIN;
+        return $this->role === 'admin';
     }
+    
+    /**
+     * Check if user has staff role
+     * 
+     * @return bool
+     */
     public function isStaff(): bool
     {
-        return $this->role === self::ROLE_STAFF;
+        return $this->role === 'staff';
     }
 }

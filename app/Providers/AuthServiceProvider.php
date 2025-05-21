@@ -24,7 +24,7 @@ use App\Models\UserCredential;
 use App\Models\Metrics;
 use App\Policies\CartItemPolicy;
 use App\Models\CartItem;
-
+use App\Policies\MetricPolicy;
 class AuthServiceProvider extends ServiceProvider
 {
     /**
@@ -42,8 +42,7 @@ class AuthServiceProvider extends ServiceProvider
         Brand::class => BrandPolicy::class,
         UserCredential::class => UserCredentialPolicy::class,
         CartItem::class => CartItemPolicy::class,
-        'App\Models\Metrics' => MetricsPolicy::class,
-        \App\Models\Shipping::class => \App\Policies\ShippingPolicy::class,
+        Metrics::class => MetricsPolicy::class,
     ];
 
     /**

@@ -19,7 +19,8 @@ class Product extends Model
         'stock',
         'status',
         'brand_id',
-        'weight'
+        'weight',
+        'category_id'
     ];
     protected $casts = [
         'price' => 'float',

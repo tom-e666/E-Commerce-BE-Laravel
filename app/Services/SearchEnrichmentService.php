@@ -16,8 +16,6 @@ class SearchEnrichmentService
     {
         $this->geminiApiKey = env('GOOGLE_GEMINI_API_KEY');
         $this->geminiEndpoint = env('GOOGLE_GEMINI_ENDPOINT');
-        // Allow disabling AI completely via config for maximum performance
-        $this->useAI = env('USE_AI_SEARCH', true);
     }
     
     /**

@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 final class MetricsResolver
 {
@@ -24,12 +25,25 @@ final class MetricsResolver
     public function getDashboardMetrics($_, array $args)
     {
         $user = AuthService::Auth();
+        
+        Log::debug('Metrics auth check', [
+            'user_id' => $user ? $user->id : null,
+            'user_role' => $user ? $user->role : null,
+            'is_admin' => $user ? $user->isAdmin() : false
+        ]);
+        
         if (!$user) {
             return $this->error('Unauthorized', 401);
         }
         
         // Check authorization using policy
         if (Gate::denies('viewDashboard', 'App\Models\Metrics')) {
+            Log::warning('Metrics policy check failed', [
+                'user_id' => $user->id,
+                'role' => $user->role,
+                'policy' => 'viewDashboard'
+            ]);
+            
             return $this->error('You are not authorized to view dashboard metrics', 403);
         }
         
@@ -334,7 +348,7 @@ final class MetricsResolver
         $salesData = DB::table('orders')
             ->select(
                 DB::raw("DATE_FORMAT(created_at, '$format') as date"),
-                DB::raw('SUM(total_amount) as revenue'),
+                DB::raw('SUM(total_price) as revenue'),
                 DB::raw('COUNT(*) as orders_count')
             )
             ->where('status', 'completed')
