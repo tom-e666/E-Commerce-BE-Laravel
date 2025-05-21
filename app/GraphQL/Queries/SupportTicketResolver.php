@@ -6,54 +6,35 @@ use App\Models\SupportTicket;
 use App\Models\SupportTicketResponse;
 use App\Services\AuthService;
 use Illuminate\Support\Facades\Gate;
+use App\GraphQL\Traits\GraphQLResponse;
 
 final class SupportTicketResolver
 {
+    use GraphQLResponse;
     /**
      * Get a specific support ticket
      */
     public function getSupportTicket($_, array $args)
     {
-        $user = AuthService::Auth();
-        if (!$user) {
-            return [
-                'code' => 401,
-                'message' => 'Unauthorized',
-                'supportTicket' => null
-            ];
-        }
+        $user = auth('api')->user();
         
         if (!isset($args['id'])) {
-            return [
-                'code' => 400,
-                'message' => 'Ticket ID is required',
-                'supportTicket' => null
-            ];
+            return $this->error('Ticket ID is required', 400);
         }
         
         $ticket = SupportTicket::find($args['id']);
         if (!$ticket) {
-            return [
-                'code' => 404,
-                'message' => 'Ticket not found',
-                'supportTicket' => null
-            ];
+            return $this->error('Ticket not found', 404);
         }
         
         // Check if user can view this ticket
         if (Gate::denies('view', $ticket)) {
-            return [
-                'code' => 403,
-                'message' => 'You are not authorized to view this ticket',
-                'supportTicket' => null
-            ];
+            return $this->error('You are not authorized to view this ticket', 403);
         }
         
-        return [
-            'code' => 200,
-            'message' => 'Success',
-            'supportTicket' => $ticket
-        ];
+        return $this->success('Ticket retrieved successfully', 200, [
+            'supportTicket' => $ticket,
+        ]);
     }
     
     /**
@@ -61,14 +42,7 @@ final class SupportTicketResolver
      */
     public function getSupportTickets($_, array $args)
     {
-        $user = AuthService::Auth();
-        if (!$user) {
-            return [
-                'code' => 401,
-                'message' => 'Unauthorized',
-                'supportTickets' => []
-            ];
-        }
+        $user = auth('api')->user();
         
         // Initialize query
         $query = SupportTicket::query();
@@ -99,12 +73,10 @@ final class SupportTicketResolver
         
         // Get tickets
         $tickets = $query->get();
-        
-        return [
-            'code' => 200,
-            'message' => 'Success',
-            'supportTickets' => $tickets
-        ];
+
+        return $this->success('Tickets retrieved successfully', 200, [
+            'supportTickets' => $tickets,
+        ]);
     }
     
     /**
@@ -112,45 +84,24 @@ final class SupportTicketResolver
      */
     public function getSupportTicketResponses($_, array $args)
     {
-        $user = AuthService::Auth();
-        if (!$user) {
-            return [
-                'code' => 401,
-                'message' => 'Unauthorized',
-                'supportTicket' => null
-            ];
-        }
+        $user = auth('api')->user();
         
         if (!isset($args['ticket_id'])) {
-            return [
-                'code' => 400,
-                'message' => 'Ticket ID is required',
-                'supportTicket' => null
-            ];
+            return $this->error('Ticket ID is required', 400);
         }
         
         $ticket = SupportTicket::with('responses')->find($args['ticket_id']);
         if (!$ticket) {
-            return [
-                'code' => 404,
-                'message' => 'Ticket not found',
-                'supportTicket' => null
-            ];
+            return $this->error('Ticket not found', 404);
         }
         
         // Check if user can view this ticket
         if (Gate::denies('view', $ticket)) {
-            return [
-                'code' => 403,
-                'message' => 'You are not authorized to view this ticket',
-                'supportTicket' => null
-            ];
+            return $this->error('You are not authorized to view this ticket', 403);
         }
         
-        return [
-            'code' => 200,
-            'message' => 'Success',
-            'supportTicket' => $ticket
-        ];
+        return $this->success('Responses retrieved successfully', 200, [
+            'supportTicket' => $ticket,
+        ]);
     }
 }
