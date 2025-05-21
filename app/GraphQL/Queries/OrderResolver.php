@@ -202,10 +202,7 @@ final readonly class OrderResolver
      */
     public function getAllOrders($_, array $args): array
     {
-        $user = AuthService::Auth();
-        if (!$user) {
-            return $this->error('Unauthorized', 401);
-        }
+        $user = auth('api')->user();
         
         // Check if user can view all orders
         if (Gate::denies('viewAny', Order::class)) {

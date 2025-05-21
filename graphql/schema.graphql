@@ -356,6 +356,23 @@ type OrderItemDetails {
   quantity: Int!
 }
 
+type OrderResult implements Order{
+  id: ID!
+  user_id: ID!
+  status: OrderStatus!
+  created_at: String!
+  total_price: Float!
+  items: [OrderItemDetails!]
+  payment_status: String!
+  shipping_address: String
+}
+
+input OrderItemInput {
+  product_id: ID!
+  quantity: Int!
+  shipping_address: String!
+}
+
 enum OrderStatus {
   PENDING @enum(value: "pending")
   CONFIRMED @enum(value: "confirmed")
@@ -367,13 +384,13 @@ enum OrderStatus {
 type OrderResponse implements BaseResponse {
   code: Int!
   message: String!
-  order: Order
+  order: OrderResult
 }
 
 type OrdersResponse implements BaseResponse {
   code: Int!
   message: String!
-  orders: [Order]
+  orders: [OrderResult]
 }
 
 # Queries
@@ -393,22 +410,46 @@ extend type Query {
 
 # Mutations
 extend type Mutation {
-  createOrderFromCart: OrderResponse! @field(resolver: "OrderResolver@createOrderFromCart") @guard(with: ["api"])
-  
-  cancelOrder(order_id: ID!): BaseResponseImplementation! @field(resolver: "OrderResolver@cancelOrder") @guard(with: ["api"])
+  createOrder(
+    typeOrder: String
+    shipping_address: String!
+    items: [OrderItemInput!]!
+  ): OrderResponse!
+    @field(resolver: "OrderResolver@createOrder")
+    @guard(with: ["api"])
 
-  confirmOrder(order_id: ID!): BaseResponseImplementation! @field(resolver: "OrderResolver@confirmOrder") @guard(with: ["api"])
-  shipOrder(order_id: ID!): BaseResponseImplementation! @field(resolver: "OrderResolver@shipOrder") @guard(with: ["api"])
-  deliverOrder(order_id: ID!): BaseResponseImplementation! @field(resolver: "OrderResolver@deliverOrder") @guard(with: ["api"])
+  createOrderFromCart(
+    shipping_address: String!
+  ): OrderResponse!
+    @field(resolver: "OrderResolver@createOrderFromCart")
+    @guard(with: ["api"])
+  
+  cancelOrder(order_id: ID!): BaseResponseImplementation!
+    @field(resolver: "OrderResolver@cancelOrder")
+    @guard(with: ["api"])
+
+  confirmOrder(order_id: ID!): BaseResponseImplementation!
+    @field(resolver: "OrderResolver@confirmOrder")
+    @guard(with: ["api"])
+  shipOrder(order_id: ID!): BaseResponseImplementation!
+    @field(resolver: "OrderResolver@shipOrder")
+    @guard(with: ["api"])
+  deliverOrder(order_id: ID!): BaseResponseImplementation!
+    @field(resolver: "OrderResolver@deliverOrder") 
+    @guard(with: ["api"])
 
   updateOrderItem(
     order_item_id: ID!
     quantity: Int!
-  ): BaseResponseImplementation! @field(resolver: "OrderResolver@updateOrderItem") @guard(with: ["api"])
+  ): BaseResponseImplementation! 
+    @field(resolver: "OrderResolver@updateOrderItem")
+    @guard(with: ["api"])
   
   deleteOrderItem(
     order_item_id: ID!
-  ): BaseResponseImplementation! @field(resolver: "OrderResolver@deleteOrderItem") @guard(with: ["api"])
+  ): BaseResponseImplementation!
+    @field(resolver: "OrderResolver@deleteOrderItem")
+    @guard(with: ["api"])
 }
 
 #-----------------------------------------------
@@ -555,9 +596,9 @@ type ShippingsResponse implements BaseResponse {
 
 extend type Query {
   # PUBLIC ENDPOINTS - Location data for shipping calculations
-  getProvinces: ProvinceResponse! @field(resolver: "App\\GraphQL\\Queries\\ShippingResolver@getProvinces")
-  getDistricts(province_id: ID!): DistrictResponse! @field(resolver: "App\\GraphQL\\Queries\\ShippingResolver@getDistricts")
-  getWards(district_id: ID!): WardResponse! @field(resolver: "App\\GraphQL\\Queries\\ShippingResolver@getWards")
+  getProvinces: ProvinceResponse! @field(resolver: "ShippingResolver@getProvinces")
+  getDistricts(province_id: ID!): DistrictResponse! @field(resolver: "ShippingResolver@getDistricts")
+  getWards(district_id: ID!): WardResponse! @field(resolver: "ShippingResolver@getWards")
   
   # PUBLIC ENDPOINT - Calculate shipping fee before order
   calculateShippingFee(
@@ -565,14 +606,14 @@ extend type Query {
     to_ward_code: String!
     weight: Int!
     value: Int
-  ): ShippingFeeResponse! @field(resolver: "App\\GraphQL\\Queries\\ShippingResolver@calculateShippingFee")
+  ): ShippingFeeResponse! @field(resolver: "ShippingResolver@calculateShippingFee")
   
   # USER: Can view shipping for own orders
   # ADMIN/STAFF: Can view shipping for any order
-  getShippingByOrderId(order_id: ID!): ShippingResponse! @field(resolver: "App\\GraphQL\\Queries\\ShippingResolver@getShippingByOrderId") @guard(with: ["api"])
+  getShippingByOrderId(order_id: ID!): ShippingResponse! @field(resolver: "ShippingResolver@getShippingByOrderId") @guard(with: ["api"])
 
   getAllShippings(status: String): ShippingsResponse! 
-    @field(resolver: "App\\GraphQL\\Queries\\ShippingResolver@getShippings") 
+    @field(resolver: "ShippingResolver@getShippings") 
     @guard(with: ["api"]) 
 }
 
@@ -589,7 +630,7 @@ extend type Mutation {
     recipient_phone: String!
     note: String
     shipping_method: String!
-  ): ShippingResponse! @field(resolver: "App\\GraphQL\\Mutations\\ShippingResolver@createShipping") @guard(with: ["api"])
+  ): ShippingResponse! @field(resolver: "ShippingResolver@createShipping") @guard(with: ["api"])
   
   updateShipping(
     shipping_id: ID!
@@ -600,16 +641,16 @@ extend type Mutation {
     recipient_name: String
     recipient_phone: String
     note: String
-  ): ShippingResponse! @field(resolver: "App\\GraphQL\\Mutations\\ShippingResolver@updateShipping") @guard(with: ["api"])
+  ): ShippingResponse! @field(resolver: "ShippingResolver@updateShipping") @guard(with: ["api"])
   
   updateShippingStatus(
     shipping_id: ID!
     status: String!
   ): ShippingResponse! 
-    @field(resolver: "App\\GraphQL\\Mutations\\ShippingResolver@updateShippingStatus") 
+    @field(resolver: "ShippingResolver@updateShippingStatus") 
     @guard(with: ["api"]) 
   
-  cancelShipping(shipping_id: ID!): BaseResponseImplementation! @field(resolver: "App\\GraphQL\\Mutations\\ShippingResolver@cancelShipping") @guard(with: ["api"])
+  cancelShipping(shipping_id: ID!): BaseResponseImplementation! @field(resolver: "ShippingResolver@cancelShipping") @guard(with: ["api"])
   
 }
 

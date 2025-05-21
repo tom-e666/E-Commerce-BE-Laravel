@@ -19,6 +19,8 @@ class Order extends Model
         'user_id',
         'total_price',
         'status',//pending/confirmed/   shipped/delivered/cancelled
+        'payment_status',//paid/unpaid
+        'shipping_address',
     ];
 
     protected $casts = [
