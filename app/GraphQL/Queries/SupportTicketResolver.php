@@ -74,9 +74,10 @@ final class SupportTicketResolver
         // Get tickets
         $tickets = $query->get();
 
-        return $this->success('Tickets retrieved successfully', 200, [
+        // Fix: Change the parameter order to match the GraphQLResponse trait
+        return $this->success([
             'supportTickets' => $tickets,
-        ]);
+        ], 'Tickets retrieved successfully', 200);
     }
     
     /**

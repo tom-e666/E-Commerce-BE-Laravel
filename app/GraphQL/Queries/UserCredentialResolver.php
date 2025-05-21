@@ -53,11 +53,12 @@ final readonly class UserCredentialResolver{
                   ->orWhere('phone', 'like', "%$search%");
             });
         }
-        $users = $query->paginate($perPage, ['*'], 'page', $page);
+        
+        // Get all users without pagination since the schema doesn't define pagination params
+        $users = $query->get();
         
         return $this->success([
-            'users' => $users->items(),
-            'total' => $users->total(),
+            'users' => $users,
         ], 'Users retrieved successfully', 200);
     }
     public function getUser($_, array $args)
