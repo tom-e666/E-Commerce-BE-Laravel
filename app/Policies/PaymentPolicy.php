@@ -53,4 +53,10 @@ class PaymentPolicy
         // Only admin can delete payments
         return $user->isAdmin();
     }
+
+    public function verify(UserCredential $user, Payment $payment): bool
+    {
+        $order = Order::find($payment->order_id);
+        return $order && $order->user_id === $user->id;
+    }
 }

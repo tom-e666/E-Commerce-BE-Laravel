@@ -35,4 +35,14 @@ return [
         ],
     ],
 
+    'vnpay' => [
+        'tmn_code' => env('VNPAY_TMN_CODE'),
+        'hash_secret' => env('VNPAY_HASH_SECRET'),
+        'url' => env('VNPAY_URL'),
+        'return_url' => env('VNPAY_RETURN_URL'),
+        'api_url' => env('VNPAY_API_URL'),
+        'api_username' => env('VNPAY_API_USERNAME'),
+        'api_password' => env('VNPAY_API_PASSWORD'),
+    ],
+
 ];

@@ -10,6 +10,7 @@ use App\Models\Payment;
 use GraphQL\Error\Error;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Gate;
+use App\Services\VNPayService;
 
 final readonly class PaymentResolver
 {
@@ -18,9 +19,17 @@ final readonly class PaymentResolver
     /** @param  array{}  $args */
     protected ZalopayService $zalopayService;
     
-    public function __construct(ZalopayService $zalopayService)
+    // public function __construct(ZalopayService $zalopayService)
+    // {
+    //     $this->zalopayService = $zalopayService;
+    // }
+
+    protected VNPayService $vnpayService;
+
+    public function __construct(ZalopayService $zalopayService, VNPayService $vnpayService)
     {
         $this->zalopayService = $zalopayService;
+        $this->vnpayService = $vnpayService;
     }
     
     public function createPaymentZalopay($_, array $args)
@@ -113,10 +122,102 @@ final readonly class PaymentResolver
             'payment_status' => 'pending',
             'transaction_id' => $this->generateTransactionId(),
         ]);
+
+        // Update order status to pending
+        $order->status = 'confirmed';
+        $order->save();
         
         return $this->success([
             'transaction_id' => $payment->transaction_id,
         ], 'Payment created successfully', 200);
+    }
+
+    public function createPaymentVNPay($_, array $args)
+    {
+        $user = auth('api')->user();
+        
+        if(!isset($args['order_id'])) {
+            return $this->error('order_id is required', 400);
+        }
+        
+        $order = Order::where('id', $args['order_id'])->first();
+        
+        if(!$order){
+            return $this->error('Order not found', 404);
+        }
+        
+        // Check if user can create payment for this order using policy
+        if (Gate::denies('create', [Payment::class, $order])) {
+            return $this->error('You are not authorized to create payment for this order', 403);
+        }
+        
+        // Check if payment already exists for this order
+        $existingPayment = Payment::where('order_id', $args['order_id'])
+                                ->whereIn('payment_status', ['pending, completed'])
+                                ->first();
+                                
+        if ($existingPayment) {
+            return $this->error('Payment already exists for this order', 400);
+        }
+
+        //Create payment using VNPay
+        $payment = Payment::create([
+            'order_id' => $args['order_id'],
+            'amount' => $order->total_price,
+            'payment_method' => 'vnpay',
+            'payment_status' => 'pending',
+            'transaction_id' => $this->generateTransactionId(),
+        ]);
+
+        $paymentUrl = $this->vnpayService->createPayment([
+            'order_id' => $payment->transaction_id,
+            'amount' => $order->total_price,
+            'order_info' => 'Payment for order #' . $payment->transaction_id,
+            'locale' => 'vn',
+            'bank_code' => $args['bank_code'] ?? '',
+            'order_type' => $args['order_type'] ?? 'other',
+        ]);
+
+        return $this->success([
+            'payment_url' => $paymentUrl,
+        ], 'Payment created successfully', 200);
+    }
+
+    public function verifyPaymentVNPay($_, array $args)
+    {
+        $user = auth('api')->user();
+        
+        if(!isset($args['vnp_ResponseCode'])) {
+            return $this->error('vnp_ResponseCode is required', 400);
+        }
+        
+        $payment = Payment::where('transaction_id', $args['vnp_TxnRef'])->first();
+        
+        if(!$payment){
+            return $this->error('Payment not found', 404);
+        }
+        
+        // Check if user can verify this payment using policy
+        if (Gate::denies('verify', $payment)) {
+            return $this->error('You are not authorized to verify this payment', 403);
+        }
+        
+        // Update payment status based on response code
+        if ($args['vnp_ResponseCode'] === '00') {
+            $payment->payment_status = 'completed';
+            $payment->save();
+            
+            // Update order status
+            $order = Order::find($payment->order_id);
+            if ($order && $order->status === 'pending') {
+                $order->status = 'confirmed';
+                $order->save();
+            }
+            
+            return $this->success([], 'Payment verified successfully', 200);
+        } else {
+            return $this->error('Payment verification failed: ' . $args['vnp_ResponseCode'], 400);
+        }
     }
     
     public function updatePaymentStatus($_, array $args)

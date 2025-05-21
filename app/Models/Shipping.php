@@ -8,7 +8,7 @@ class Shipping extends Model
 {
     protected $fillable = [
         'order_id',
-        'status',//pending-> packed-> shipped, delivered,cancelled,
+        'status', // 'pending', 'delivering', 'delivered', 'cancelled', 'returning', 'returned'
         'address',
         'recipient_name',
         'recipient_phone',
