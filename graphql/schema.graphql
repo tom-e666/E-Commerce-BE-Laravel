@@ -363,7 +363,7 @@ type OrderResult implements Order{
   created_at: String!
   total_price: Float!
   items: [OrderItemDetails!]
-  payment_status: String!
+  payment_status: String
   shipping_address: String
 }
 

@@ -130,8 +130,6 @@ final readonly class OrderResolver
                 'user_id' => $user->id,
                 'status' => 'pending',
                 'total_price' => 0,
-                'payment_status' => 'pending',
-                'shipping_address' => $args['shipping_address'] ?? null,
             ]);
 
             $total_price = 0;
@@ -263,8 +261,6 @@ final readonly class OrderResolver
                 'user_id' => $user->id,
                 'status' => 'pending',
                 'total_price' => 0,
-                'payment_status' => 'pending',
-                'shipping_address' => $args['shipping_address'],
             ]);
             $total_price = 0;
             foreach ($cartItems as $cartItem) {
