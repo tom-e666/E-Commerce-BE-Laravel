@@ -686,40 +686,54 @@ extend type Mutation {
 #-----------------------------------------------
 # Types
 type SupportTicket {
-  id: ID!       # Added ID field
+  id: ID!
   subject: String
   message: String
   status: String
-  user_id: ID!  # Added user_id field
-  created_at: String # Added created_at field
+  user_id: ID!
+  created_at: String
+  responses: [SupportTicketResponseType]
 }
 
-type SupportTicketMessage {
-  id: ID!       # Added ID field
+type SupportTicketResponseType {
+  id: ID!
   subject: String
   message: String
   ticket_id: ID!
   user_id: ID!
   created_at: String
+  user: UserCredential
 }
 
-type SupportTicketResponse {
-  code: Int
-  message: String
+type SupportTicketResponse implements BaseResponse {
+  code: Int!
+  message: String!
   supportTicket: SupportTicket
 }
 
-type SupportTicketsResponse {
-  code: Int
-  message: String
+type SupportTicketsResponse implements BaseResponse {
+  code: Int!
+  message: String!
   supportTickets: [SupportTicket]
+}
+
+type SupportTicketResponsesResponse implements BaseResponse {
+  code: Int!
+  message: String!
+  supportTicketResponses: [SupportTicketResponseType]
+}
+
+type SingleSupportTicketResponseResponse implements BaseResponse {
+  code: Int!
+  message: String!
+  supportTicketResponse: SupportTicketResponseType
 }
 
 # Queries
 extend type Query {
   # USER: Can view own support tickets
   # ADMIN/STAFF: Can view any support ticket
-  getSupportTicket(id: ID): SupportTicketResponse @field(resolver: "SupportTicketResolver@getSupportTicket") @guard(with: ["api"])
+  getSupportTicket(id: ID!): SupportTicketResponse @field(resolver: "SupportTicketResolver@getSupportTicket") @guard(with: ["api"])
   
   # USER: Can view own support tickets only
   # ADMIN/STAFF: Can view all tickets and filter by user_id/status
@@ -732,7 +746,7 @@ extend type Query {
   
   # USER: Can view responses to own tickets
   # ADMIN/STAFF: Can view responses to any ticket
-  getSupportTicketResponses(ticket_id: ID): SupportTicketResponse @field(resolver: "SupportTicketResolver@getSupportTicketResponses") @guard(with: ["api"])
+  getSupportTicketResponses(ticket_id: ID!): SupportTicketResponsesResponse @field(resolver: "SupportTicketResolver@getSupportTicketResponses") @guard(with: ["api"])
 }
 
 # Mutations
@@ -762,9 +776,23 @@ extend type Mutation {
   # ADMIN/STAFF: Can respond to any ticket
   createSupportTicketResponse(
     ticket_id: ID!
-    subject: String!
+    subject: String
     message: String!
-  ): SupportTicketResponse @field(resolver: "SupportTicketResolver@updateSupportTicketResponse") @guard(with: ["api"])
+  ): SingleSupportTicketResponseResponse @field(resolver: "SupportTicketResolver@createSupportTicketResponse") @guard(with: ["api"])
+  
+  # USER: Can update their own responses
+  # ADMIN/STAFF: Can update any response
+  updateSupportTicketResponse(
+    id: ID!
+    subject: String
+    message: String
+  ): SingleSupportTicketResponseResponse @field(resolver: "SupportTicketResolver@updateSupportTicketResponse") @guard(with: ["api"])
+  
+  # USER: Can delete their own responses
+  # ADMIN/STAFF: Can delete any response
+  deleteSupportTicketResponse(
+    id: ID!
+  ): Response @field(resolver: "SupportTicketResolver@deleteSupportTicketResponse") @guard(with: ["api"])
 }
 
 #-----------------------------------------------

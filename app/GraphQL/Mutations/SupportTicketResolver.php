@@ -85,22 +85,22 @@ final class SupportTicketResolver
         
         $ticket->save();
 
-        return $this->success('Ticket updated successfully', 200, [
+        return $this->success([
             'supportTicket' => $ticket,
-        ]);
+        ], 'Ticket updated successfully', 200);
     }
     
     /**
      * Create a response to a support ticket
      */
-    public function updateSupportTicketResponse($_, array $args)
+    public function createSupportTicketResponse($_, array $args)
     {
         $user = auth('api')->user();
         
         $validator = Validator::make($args, [
-            'ticket_id' => 'required|string',
+            'ticket_id' => 'required|integer|exists:support_tickets,id',
             'message' => 'required|string',
-            'subject' => 'required|string',
+            'subject' => 'nullable|string|max:255',
         ]);
         
         if ($validator->fails()) {
@@ -121,8 +121,8 @@ final class SupportTicketResolver
         // Create the response
         $ticketResponse = SupportTicketResponse::create([
             'ticket_id' => $args['ticket_id'],
-            'user_id' => $user->id, // Add the authenticated user
-            'subject' => $args['subject'],
+            'user_id' => $user->id,
+            'subject' => $args['subject'] ?? null,
             'message' => $args['message'],
         ]);
         
@@ -132,9 +132,81 @@ final class SupportTicketResolver
             $ticket->save();
         }
         
-        return $this->success('Response added successfully', 200, [
-            'supportTicket' => $ticket,
+        return $this->success([
+            'supportTicketResponse' => $ticketResponse,
+        ], 'Response added successfully', 200);
+    }
+    
+    /**
+     * Update an existing support ticket response
+     */
+    public function updateSupportTicketResponse($_, array $args)
+    {
+        $user = auth('api')->user();
+        
+        $validator = Validator::make($args, [
+            'id' => 'required|integer|exists:support_ticket_responses,id',
+            'message' => 'nullable|string',
+            'subject' => 'nullable|string|max:255',
         ]);
+        
+        if ($validator->fails()) {
+            return $this->error($validator->errors()->first(), 400);
+        }
+        
+        // Find the response
+        $response = SupportTicketResponse::find($args['id']);
+        if (!$response) {
+            return $this->error('Response not found', 404);
+        }
+        
+        // Check if user can update this response
+        if ($response->user_id !== $user->id && !$user->isAdmin() && !$user->isStaff()) {
+            return $this->error('You are not authorized to update this response', 403);
+        }
+        
+        // Update fields
+        if (isset($args['message'])) {
+            $response->message = $args['message'];
+        }
+        
+        if (isset($args['subject'])) {
+            $response->subject = $args['subject'];
+        }
+        
+        $response->save();
+        
+        return $this->success([
+            'supportTicketResponse' => $response,
+        ], 'Response updated successfully', 200);
+    }
+    
+    /**
+     * Delete a support ticket response
+     */
+    public function deleteSupportTicketResponse($_, array $args)
+    {
+        $user = auth('api')->user();
+        
+        if (!isset($args['id'])) {
+            return $this->error('Response ID is required', 400);
+        }
+        
+        $response = SupportTicketResponse::find($args['id']);
+        if (!$response) {
+            return $this->error('Response not found', 404);
+        }
+        
+        // Check if user can delete this response
+        if ($response->user_id !== $user->id && !$user->isAdmin() && !$user->isStaff()) {
+            return $this->error('You are not authorized to delete this response', 403);
+        }
+        
+        $response->delete();
+        
+        return $this->success([
+            'supportTicketResponse' => $response,
+        ], 'Response deleted successfully', 200);
     }
     
     /**
@@ -164,4 +236,5 @@ final class SupportTicketResolver
             'supportTicket' => $ticket,
         ]);
     }
+    
 }

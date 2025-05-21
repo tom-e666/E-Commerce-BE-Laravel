@@ -29,14 +29,13 @@ class SearchResolver
         // Track execution time
         $startTime = microtime(true);
         
-        // Extract parameters
+        // Extract parameters - schema defines only 'query' parameter
         $query = $args['query'] ?? '';
-        $page = $args['page'] ?? 1;
-        $perPage = $args['perPage'] ?? 10;
         
         // Process the query with our enrichment service
         $searchParams = $this->searchService->processQuery($query);
         Log::info('Search parameters: ', $searchParams);
+        
         // Extract processed data
         $searchTerms = $searchParams['search_terms'];
         $brands = $searchParams['filters']['brands'] ?? [];
@@ -46,6 +45,7 @@ class SearchResolver
         // Start building query
         $productsQuery = Product::query()->where('status', true);
         
+        // Apply search terms
         if (!empty($searchTerms)) {
             $productsQuery->where(function($q) use ($searchTerms) {
                 foreach ($searchTerms as $term) {
@@ -76,7 +76,7 @@ class SearchResolver
             $productsQuery->where('price', '<=', $priceRange['max']);
         }
         
-        // Get total count before pagination
+        // Get total count
         $totalCount = $productsQuery->count();
         
         // Apply sort
@@ -94,9 +94,7 @@ class SearchResolver
                 $productsQuery->orderBy('id', 'desc'); // Default sort
         }
         
-        // Get products - we'll get all results since you mentioned there's an issue with pagination
-        // If you want to re-add pagination, replace this with:
-        // $products = $productsQuery->with('details')->paginate($perPage, ['*'], 'page', $page);
+        // Get all products without pagination to match schema
         $products = $productsQuery->with('details')->get();
         
         // Get filter options

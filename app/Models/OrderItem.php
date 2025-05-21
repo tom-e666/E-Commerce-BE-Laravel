@@ -55,4 +55,8 @@ class OrderItem extends Model
         }
         return null;
     }
+    public function image()
+    {
+        return $this->product->productDetail->images[0] ?? null;
+    }
 }

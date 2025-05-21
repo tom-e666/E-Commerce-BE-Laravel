@@ -32,9 +32,9 @@ final class SupportTicketResolver
             return $this->error('You are not authorized to view this ticket', 403);
         }
         
-        return $this->success('Ticket retrieved successfully', 200, [
+        return $this->success([
             'supportTicket' => $ticket,
-        ]);
+        ], 'Ticket retrieved successfully', 200);
     }
     
     /**
@@ -74,9 +74,9 @@ final class SupportTicketResolver
         // Get tickets
         $tickets = $query->get();
 
-        return $this->success('Tickets retrieved successfully', 200, [
+        return $this->success([
             'supportTickets' => $tickets,
-        ]);
+        ], 'Tickets retrieved successfully', 200);
     }
     
     /**
@@ -90,7 +90,7 @@ final class SupportTicketResolver
             return $this->error('Ticket ID is required', 400);
         }
         
-        $ticket = SupportTicket::with('responses')->find($args['ticket_id']);
+        $ticket = SupportTicket::find($args['ticket_id']);
         if (!$ticket) {
             return $this->error('Ticket not found', 404);
         }
@@ -100,8 +100,14 @@ final class SupportTicketResolver
             return $this->error('You are not authorized to view this ticket', 403);
         }
         
-        return $this->success('Responses retrieved successfully', 200, [
-            'supportTicket' => $ticket,
-        ]);
+        // Get responses with user information
+        $responses = SupportTicketResponse::with('user')
+            ->where('ticket_id', $args['ticket_id'])
+            ->orderBy('created_at')
+            ->get();
+        
+        return $this->success([
+            'supportTicketResponses' => $responses,
+        ], 'Responses retrieved successfully', 200);
     }
 }
