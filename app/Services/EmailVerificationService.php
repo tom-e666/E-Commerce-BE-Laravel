@@ -12,33 +12,6 @@ use App\Mail\VerifyEmail;
 
 class EmailVerificationService
 {
-<<<<<<< HEAD
-    public function __construct()
-{
-}
-public function register($_, array $args)
-{
-    // Your existing validation and user creation...
-    
-    // After creating user
-    $user = UserCredential::create([
-        'email' => $args['email'],
-        'password' => Hash::make($args['password']),
-        'full_name' => $args['full_name'],
-        'phone' => $args['phone'] ?? null,
-        'email_verified' => false,
-        'role' => UserCredential::ROLE_USER,
-    ]);
-    
-    // Send verification email
-    $this->sendVerificationEmail($user);
-    
-    return $this->success([
-        'user' => $user,
-        'token' => $this->generateToken($user)
-    ], 'Registration successful. Please verify your email address.', 201);
-}
-=======
     // public function __construct(EmailVerificationService $emailVerificationService)
     // {
     //     $this->emailVerificationService = $emailVerificationService;
@@ -65,7 +38,6 @@ public function register($_, array $args)
             'token' => $this->generateToken($user)
         ], 'Registration successful. Please verify your email address.', 201);
     }
->>>>>>> dd480b5c462861f56980dcf73a65f0e477848945
     /**
      * Generate a verification URL for the given user.
      *
@@ -108,11 +80,15 @@ public function register($_, array $args)
             $verificationUrl = $this->generateVerificationUrl($user);
             
             $userData = [
-                'name' => $user->full_name,
+                'name' => $user->full_name ?: 'Valued Customer',
                 'email' => $user->email,
             ];
             
             Mail::to($user->email)->send(new VerifyEmail($userData, $verificationUrl));
+            
+            // Update the user's record to track when verification email was sent
+            $user->email_verification_sent_at = now();
+            $user->save();
             
         } catch (\Exception $e) {
             \Log::error('Email verification error: ' . $e->getMessage());

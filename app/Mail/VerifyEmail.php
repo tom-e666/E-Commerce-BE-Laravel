@@ -22,7 +22,7 @@ class VerifyEmail extends Mailable
      */
     public function __construct($userData, $verificationUrl)
     {
-        $this->name = $userData['name'] ?? '';
+        $this->name = $userData['name'] ?? 'Valued Customer';
         $this->verificationUrl = $verificationUrl;
     }
 
@@ -34,6 +34,7 @@ class VerifyEmail extends Mailable
     public function build()
     {
         return $this->subject('Verify Your Email Address')
+                    ->priority(1) // High priority
                     ->view('emails.verify-email')
                     ->with([
                         'name' => $this->name,

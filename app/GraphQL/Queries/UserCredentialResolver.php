@@ -86,4 +86,15 @@ final readonly class UserCredentialResolver{
             'user' => $targetUser,
         ], 'User retrieved successfully', 200);
     }
+    public function getCurrentUser($_, array $args)
+    {
+        $user = AuthService::Auth();
+        if (!$user) {
+            return $this->error('Unauthorized', 401);
+        }
+        
+        return $this->success([
+            'user' => $user,
+        ], 'User retrieved successfully', 200);
+    }
 }

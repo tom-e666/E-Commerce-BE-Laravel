@@ -69,7 +69,7 @@ input UserLogInput {
 extend type Query {
   getUserByJWT: UserResponse @field(resolver: "AuthResolver@getUserByJWT") @guard(with: ["api"])
   getUserCredential: UserResponse @field(resolver: "UserCredentialResolver@getUserCredential") @guard(with: ["api"])
-
+  getCurrentUser: UserResponse @field(resolver: "UserCredentialResolver@getCurrentUser") @guard(with: ["api"])
 
 getAllUsers(
     role: String
