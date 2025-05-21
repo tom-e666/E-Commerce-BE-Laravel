@@ -428,12 +428,14 @@ extend type Mutation {
     @field(resolver: "OrderResolver@cancelOrder")
     @guard(with: ["api"])
 
-  confirmOrder(order_id: ID!): BaseResponseImplementation!
-    @field(resolver: "OrderResolver@confirmOrder")
+  processingOrder(order_id: ID!): BaseResponseImplementation!
+    @field(resolver: "OrderResolver@processingOrder")
     @guard(with: ["api"])
+
   shipOrder(order_id: ID!): BaseResponseImplementation!
     @field(resolver: "OrderResolver@shipOrder")
     @guard(with: ["api"])
+
   deliverOrder(order_id: ID!): BaseResponseImplementation!
     @field(resolver: "OrderResolver@deliverOrder") 
     @guard(with: ["api"])
@@ -491,6 +493,12 @@ type PaymentZalopayResponse implements BaseResponse {
   transaction_id: String
 }
 
+type VNPayResponse {
+  code: Int!
+  message: String!
+  payment_url: String!
+}
+
 # Mutations
 extend type Mutation {
   # USER: Can create payment for own orders
@@ -499,6 +507,25 @@ extend type Mutation {
     order_id: String!
   ): PaymentZalopayResponse @field(resolver: "PaymentResolver@createPaymentZalopay") @guard(with: ["api"])
   
+  createPaymentVNPay(
+    order_id: String!
+    amount: Float!
+    order_info: String!
+    order_type: String
+    bank_code: String
+    locale: String
+  ): VNPayResponse @field(resolver: "PaymentResolver@createPaymentVNPay") @guard(with: ["api"])
+
+  verifyPaymentVNPay(
+    vnp_ResponseCode: String!
+    vnp_TxnRef: String!
+    vnp_Amount: String!
+    vnp_TransactionNo: String
+    vnp_BankCode: String
+    vnp_PayDate: String
+    vnp_SecureHash: String!
+  ): BaseResponseImplementation @field(resolver: "PaymentResolver@verifyPaymentVNPay") @guard(with: ["api"])
+
   createPaymentCOD(
     order_id: String!
   ): PaymentCodResponse @field(resolver: "PaymentResolver@createPaymentCOD") @guard(with: ["api"])

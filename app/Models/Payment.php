@@ -9,12 +9,11 @@ class Payment extends Model
     //
     protected $fillable = [
         'order_id',
-        'payment_method',
+        'payment_method', // cod, vnpay
         'payment_status',// // 'pending', 'completed', 'failed'
         'transaction_id',
         'amount',
         'payment_time',
-
     ];
     protected $casts = [
 

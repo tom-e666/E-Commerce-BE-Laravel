@@ -241,7 +241,17 @@ final readonly class OrderResolver
                 'order' => null,
             ];
         }
-        $order->delete();   
+
+        // Khôi phục lại stock cho từng sản phẩm trong order
+        foreach ($order->items as $item) {
+            $product = Product::find($item->product_id);
+            if ($product) {
+                $product->stock += $item->quantity;
+                $product->save();
+            }
+        }
+
+        $order->delete();
         return [
             'code' => 200,
         'message' => 'success',
@@ -335,11 +345,14 @@ final readonly class OrderResolver
             $product->save();
         }
     }
-    public function confirmOrder($_,array $args):array
+
+    public function processingOrder($_,array $args):array
     {
-        $user = AuthService::Auth();
-        if (!$user) {
-            return $this->error('Unauthorized', 401);
+        $user = auth('api')->user();
+        
+        // Only admin or staff can process orders
+        if (!$user->isAdmin() && !$user->isStaff()) {
+            return $this->error('Unauthorized', 403);
         }
         
         if (!isset($args['order_id'])) {
@@ -350,15 +363,17 @@ final readonly class OrderResolver
         if ($order === null) {
             return $this->error('Order not found', 404);
         }
-        
-        if (Gate::denies('view', $order)) {
-            return $this->error('You are not authorized to view this order', 403);
+
+        if ($order->status !== 'confirmed') {
+            return $this->error('Order must be confirmed before processing', 400);
         }
         
-        return $this->success([
-            'order' => $order->load('items.product'),
-        ], 'Success', 200);
+        $order->status = 'processing';
+        $order->save();
+        
+        return $this->success([], 'Order processed successfully', 200);
     }
+
     public function cancelOrder($_,array $args):array
     {
         $user = AuthService::Auth();
@@ -379,9 +394,28 @@ final readonly class OrderResolver
         if ($order === null) {
             return $this->error('Order not found', 404);
         }
-        
-        $order->status = 'cancelled';
-        $order->save();
+
+        if(!in_array($order->status, ['pending', 'confirmed'])) {
+            return $this->error('Order cannot be cancelled at this stage', 400);
+        }
+
+        foreach ($order->items as $item) {
+            $product = Product::find($item->product_id);
+            if ($product) {
+                $product->stock += $item->quantity;
+                $product->save();
+            }
+        }
+
+        if($order->payment){
+            $order->payment->payment_status = 'refunded';
+            $order->payment->save();
+        }
+
+        if($order->shipping){
+            $order->shipping->status = 'cancelled';
+            $order->shipping->save();
+        }
         
         return $this->success([
             'order' => $order->load('items.product'),
@@ -407,9 +441,19 @@ final readonly class OrderResolver
         if ($order === null) {
             return $this->error('Order not found', 404);
         }
+
+        if ($order->status !== 'confirmed') {
+        return $this->error('Order must be confirmed before shipping', 400);
+    }
         
-        $order->status = 'shipped';
+        $order->status = 'shipping';
         $order->save();
+
+        // Update shipping status if applicable
+        if ($order->shipping) {
+            $order->shipping->status = 'delivering';
+            $order->shipping->save();
+        }
         
         return $this->success([
             'order' => $order->load('items.product'),
@@ -435,13 +479,17 @@ final readonly class OrderResolver
         if ($order === null) {
             return $this->error('Order not found', 404);
         }
+
+        if ($order->status !== 'shipping') {
+            return $this->error('Order must be shipping before completed', 400);
+        }
         
-        $order->status = 'delivered';
+        $order->status = 'completed';
         $order->save();
         
         return $this->success([
             'order' => $order->load('items.product'),
-        ], 'Order delivered successfully', 200);
+        ], 'Order completed successfully', 200);
     }
 
 
