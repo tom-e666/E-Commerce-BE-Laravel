@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Xác Minh Email</title>
+    <title>Đặt Lại Mật Khẩu</title>
     <style>
         /* Reset styles */
         body, html {
@@ -28,11 +28,6 @@
             text-align: center;
             border-top-left-radius: 8px;
             border-top-right-radius: 8px;
-        }
-        
-        .header img {
-            max-height: 60px;
-            margin-bottom: 10px;
         }
         
         .header h1 {
@@ -128,8 +123,7 @@
 <body>
     <div class="container">
         <div class="header">
-            🔥🔥🔥🔥🔥🔥🔥🔥🔥           
-            <h1>Xác Minh Email</h1>
+            <h1>Đặt Lại Mật Khẩu</h1>
         </div>
         
         <div class="content">
@@ -138,27 +132,26 @@
             </div>
             
             <div class="message">
-                Cảm ơn bạn đã đăng ký tài khoản. Để kích hoạt tài khoản và bắt đầu, vui lòng xác minh địa chỉ email của bạn bằng cách nhấp vào nút bên dưới.
+                Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn. Vui lòng nhấp vào nút bên dưới để tiếp tục quá trình đặt lại mật khẩu.
             </div>
             
             <div class="button-container">
-                <a href="{{ $verificationUrl }}" class="button" style="color: white; text-decoration: none;">Xác Minh Email</a>
+                <a href="{{ $resetUrl }}" class="button" style="color: white; text-decoration: none;">Đặt Lại Mật Khẩu</a>
             </div>
             
             <div class="message">
-                Liên kết xác minh này sẽ hết hạn trong 60 phút. Nếu bạn không tạo tài khoản này, bạn không cần thực hiện thêm hành động nào.
+                Liên kết này sẽ hết hạn trong 60 phút. Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.
             </div>
             
             <div class="link-fallback">
                 Nếu nút ở trên không hoạt động, hãy sao chép và dán liên kết sau vào trình duyệt của bạn:
-                <div class="link-text">{{ $verificationUrl }}</div>
+                <div class="link-text">{{ $resetUrl }}</div>
             </div>
         </div>
         
         <div class="footer">
-            <p>© {{ date('Y') }} Cửa Hàng Thương Mại Điện Tử ECommerce Laptop. Đã được bảo lưu mọi quyền.</p>
+            <p>© {{ date('Y') }} E-Commerce Laptop. Đã được bảo lưu mọi quyền.</p>
             <p>280 An Dương Vương, Quận 5, Thành phố Hồ Chí Minh, Việt Nam</p>
-
         </div>
     </div>
 </body>
