@@ -338,7 +338,7 @@ extend type Mutation {
 # ORDER FEATURE
 #-----------------------------------------------
 # Types
-type Order {
+interface Order { # Changed from 'type Order' to 'interface Order'
   id: ID!
   user_id: ID!
   status: OrderStatus!
