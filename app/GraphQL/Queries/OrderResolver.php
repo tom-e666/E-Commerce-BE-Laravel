@@ -273,11 +273,13 @@ final readonly class OrderResolver
             ], 'No orders found', 200);
         }
         
+        \Log::info('Orders loaded', ['orders' => $orders]);
         // Load relationships efficiently
         $orders->load(['items.product', 'user', 'payment']);
+        \Log::info('Orders with relationships loaded', ['orders' => $orders]);
         
         return $this->success([
-            'orders' => $orders->items(),
+            'orders' => $orders,
             'pagination' => [
                 'total' => $orders->total(),
                 'current_page' => $orders->currentPage(),

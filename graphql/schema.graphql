@@ -350,7 +350,7 @@ type Order {
 type OrderItemDetails {
   id: ID!
   product_id: ID!
-  name: String!
+  name: String
   price: Float!
   image: String
   quantity: Int!
