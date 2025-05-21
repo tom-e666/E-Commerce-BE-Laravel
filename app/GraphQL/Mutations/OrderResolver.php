@@ -300,7 +300,7 @@
                 $product->save();
             }
         }
-        public function confirmOrder($_,array $args):array
+        public function confirmOrder($_, array $args): array
         {
             $user = AuthService::Auth();
             if (!$user) {
@@ -312,28 +312,31 @@
             }
             
             $order = Order::find($args['order_id']);
-            if ($order === null) {
+            if (!$order) {
                 return $this->error('Order not found', 404);
             }
             
-            if (Gate::denies('view', $order)) {
-                return $this->error('You are not authorized to view this order', 403);
+            // Check authorization using policy
+            if (Gate::denies('confirm', $order)) {
+                return $this->error('You are not authorized to confirm this order', 403);
             }
             
-            return $this->success([
-                'order' => $order->load('items.product'),
-            ], 'Success', 200);
+            // Only confirm if order is in pending status
+            if ($order->status !== 'pending') {
+                return $this->error('Order cannot be confirmed. Current status: ' . $order->status, 400);
+            }
+            
+            $order->status = 'confirmed';
+            $order->save();
+            
+            return $this->success([], 'Order confirmed successfully', 200);
         }
-        public function cancelOrder($_,array $args):array
+        
+        public function cancelOrder($_, array $args): array
         {
             $user = AuthService::Auth();
             if (!$user) {
                 return $this->error('Unauthorized', 401);
-            }
-            
-            // Only admin or staff can cancel orders
-            if (!$user->isAdmin() && !$user->isStaff()) {
-                return $this->error('Unauthorized', 403);
             }
             
             if (!isset($args['order_id'])) {
@@ -341,27 +344,31 @@
             }
             
             $order = Order::find($args['order_id']);
-            if ($order === null) {
+            if (!$order) {
                 return $this->error('Order not found', 404);
+            }
+            
+            // Check authorization using policy
+            if (Gate::denies('cancel', $order)) {
+                return $this->error('You are not authorized to cancel this order', 403);
             }
             
             $order->status = 'cancelled';
             $order->save();
             
-            return $this->success([
-                'order' => $order->load('items.product'),
-            ], 'Order cancelled successfully', 200);
+            // Restore product stock for cancelled order
+            foreach ($order->items as $item) {
+                $this->restoreProductStock($item);
+            }
+            
+            return $this->success([], 'Order cancelled successfully', 200);
         }
-        public function shipOrder($_,array $args):array
+        
+        public function shipOrder($_, array $args): array
         {
             $user = AuthService::Auth();
             if (!$user) {
                 return $this->error('Unauthorized', 401);
-            }
-            
-            // Only admin or staff can ship orders
-            if (!$user->isAdmin() && !$user->isStaff()) {
-                return $this->error('Unauthorized', 403);
             }
             
             if (!isset($args['order_id'])) {
@@ -369,45 +376,57 @@
             }
             
             $order = Order::find($args['order_id']);
-            if ($order === null) {
+            if (!$order) {
                 return $this->error('Order not found', 404);
+            }
+            
+            // Check authorization using policy
+            if (Gate::denies('ship', $order)) {
+                return $this->error('You are not authorized to ship this order', 403);
+            }
+            
+            // Only ship if order is in confirmed status
+            if ($order->status !== 'confirmed') {
+                return $this->error('Order cannot be shipped. Current status: ' . $order->status, 400);
             }
             
             $order->status = 'shipped';
             $order->save();
             
-            return $this->success([
-                'order' => $order->load('items.product'),
-            ], 'Order shipped successfully', 200);
-        }
-    public function deliverOrder($_,array $args):array
-    {
-        $user = AuthService::Auth();
-        if (!$user) {
-            return $this->error('Unauthorized', 401);
+            return $this->success([], 'Order marked as shipped successfully', 200);
         }
         
-        // Only admin or staff can deliver orders
-        if (!$user->isAdmin() && !$user->isStaff()) {
-            return $this->error('Unauthorized', 403);
+        public function deliverOrder($_, array $args): array
+        {
+            $user = AuthService::Auth();
+            if (!$user) {
+                return $this->error('Unauthorized', 401);
+            }
+            
+            if (!isset($args['order_id'])) {
+                return $this->error('order_id is required', 400);
+            }
+            
+            $order = Order::find($args['order_id']);
+            if (!$order) {
+                return $this->error('Order not found', 404);
+            }
+            
+            // Check authorization using policy
+            if (Gate::denies('deliver', $order)) {
+                return $this->error('You are not authorized to deliver this order', 403);
+            }
+            
+            // Only deliver if order is in shipped status
+            if ($order->status !== 'shipped') {
+                return $this->error('Order cannot be delivered. Current status: ' . $order->status, 400);
+            }
+            
+            $order->status = 'delivered';
+            $order->save();
+            
+            return $this->success([], 'Order marked as delivered successfully', 200);
         }
-        
-        if (!isset($args['order_id'])) {
-            return $this->error('order_id is required', 400);
-        }
-        
-        $order = Order::find($args['order_id']);
-        if ($order === null) {
-            return $this->error('Order not found', 404);
-        }
-        
-        $order->status = 'delivered';
-        $order->save();
-        
-        return $this->success([
-            'order' => $order->load('items.product'),
-        ], 'Order delivered successfully', 200);
+
+
     }
-
-
-}

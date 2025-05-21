@@ -60,4 +60,8 @@ class Product extends Model
             'status' => (bool)$this->status,
         ];
     }
+    public function image()
+    {
+        return $this->details->images[0] ?? null;
+    }
 }

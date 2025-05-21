@@ -147,11 +147,7 @@ final readonly class OrderResolver
         if (!$user) {
             return $this->error('Unauthorized', 401);
         }
-        
-        // Apply pagination if provided
-        $page = $args['page'] ?? 1;
-        $perPage = $args['per_page'] ?? 10;
-        
+    
         $query = Order::where('user_id', $user->id);
         
         // Apply filters if provided
@@ -168,35 +164,25 @@ final readonly class OrderResolver
         }
         
         // Get paginated results
-        $orders = $query->orderBy('created_at', 'desc')
-                        ->paginate($perPage, ['*'], 'page', $page);
+        $orders = $query->orderBy('created_at', 'desc');
         
-        if ($orders->isEmpty()) {
+        
+        $orders = $query->with(['items.product', 'user', 'payment'])->get();
+        
+        // Format orders for response
+        $formattedOrders = $orders->map(function ($order) {
+            return $this->formatOrderResponse($order);
+        });
+        if ($orders===[]) {
             return $this->success([
                 'orders' => [],
-                'pagination' => [
-                    'total' => 0,
-                    'current_page' => $page,
-                    'per_page' => $perPage,
-                    'last_page' => 1
-                ]
             ], 'You have no orders', 200);
         }
-        
-        // Eager load related data
-        $orders->load('items.product');
-        
         return $this->success([
-            'orders' => $orders->items(),
-            'pagination' => [
-                'total' => $orders->total(),
-                'current_page' => $orders->currentPage(),
-                'per_page' => $orders->perPage(),
-                'last_page' => $orders->lastPage()
-            ]
+            'orders' => $formattedOrders,
         ], 'Success', 200);
     }
-    
+
     /**
      * Get all orders (admin/staff function)
      */
@@ -206,7 +192,6 @@ final readonly class OrderResolver
         if (!$user) {
             return $this->error('Unauthorized', 401);
         }
-        
         // Check if user can view all orders
         if (Gate::denies('viewAny', Order::class)) {
             return $this->error('You are not authorized to view all orders', 403);
@@ -307,30 +292,21 @@ final readonly class OrderResolver
         if (!$order->relationLoaded('items.product')) {
             $order->load('items.product');
         }
-        
-        // Get all product IDs from this order
-        $productIds = $order->items->pluck('product_id')->toArray();
-        
-        // Load product details from MongoDB
-        $productDetails = ProductDetail::whereIn('product_id', $productIds)->get()->keyBy('product_id');
-        
         return [
             'id' => $order->id,
             'user_id' => $order->user_id,
             'status' => $order->status,
             'total_price' => (float)$order->total_price,
             'created_at' => $order->created_at->format('Y-m-d H:i:s'),
-            'items' => $order->items->map(function($item) use ($productDetails) {
-                // Find product details from MongoDB
-                $details = $productDetails->get((string)$item->product_id);
-                
+            'items' => $order->items->map(function($item){
+                // Find product details from MongoDB                
                 return [
                     'id' => $item->id,
                     'product_id' => $item->product_id,
                     'name' => $item->product ? $item->product->name : 'Unknown Product',
                     'price' => (float)$item->price,
                     'quantity' => $item->quantity,
-                    'image' => $details && !empty($details->images) ? $details->images[0] : null,
+                    'image' => $item->product->image(),
                 ];
             })
         ];
