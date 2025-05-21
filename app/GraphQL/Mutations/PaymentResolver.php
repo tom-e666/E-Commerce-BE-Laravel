@@ -25,7 +25,7 @@ final readonly class PaymentResolver
     
     public function createPaymentZalopay($_, array $args)
     {
-        $user = AuthService::Auth(); // pre-handled by middleware
+        $user = auth('api')->user();
         
         if(!isset($args['order_id'])) {
             return $this->error('order_id is required', 400);

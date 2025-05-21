@@ -188,10 +188,8 @@ final readonly class OrderResolver
      */
     public function getAllOrders($_, array $args): array
     {
-        $user = AuthService::Auth();
-        if (!$user) {
-            return $this->error('Unauthorized', 401);
-        }
+        $user = auth('api')->user();
+        
         // Check if user can view all orders
         if (Gate::denies('viewAny', Order::class)) {
             return $this->error('You are not authorized to view all orders', 403);
@@ -216,16 +214,59 @@ final readonly class OrderResolver
             $query->where('created_at', '<=', $args['created_before']);
         }
         
-        // Get all orders without pagination to match schema
-        $orders = $query->with(['items.product', 'user', 'payment'])->get();
+        if (isset($args['search']) && !empty($args['search'])) {
+            $search = $args['search'];
+            $query->where(function($q) use ($search) {
+                $q->where('id', 'like', "%{$search}%")
+                  ->orWhere('shipping_address', 'like', "%{$search}%")
+                  ->orWhere('recipient_name', 'like', "%{$search}%")
+                  ->orWhere('recipient_phone', 'like', "%{$search}%");
+            });
+        }
         
-        // Format orders for response
-        $formattedOrders = $orders->map(function ($order) {
-            return $this->formatOrderResponse($order);
-        });
+        // Sort orders
+        $sortField = $args['sort_field'] ?? 'created_at';
+        $sortDirection = $args['sort_direction'] ?? 'desc';
+        
+        // Validate sort field
+        $allowedSortFields = ['id', 'created_at', 'status', 'total_price'];
+        if (!in_array($sortField, $allowedSortFields)) {
+            $sortField = 'created_at';
+        }
+        
+        // Validate sort direction
+        $sortDirection = strtolower($sortDirection) === 'asc' ? 'asc' : 'desc';
+        
+        $query->orderBy($sortField, $sortDirection);
+        
+        // Get paginated results
+        $orders = $query->paginate($perPage, ['*'], 'page', $page);
+        
+        if ($orders->isEmpty()) {
+            return $this->success([
+                'orders' => [],
+                'pagination' => [
+                    'total' => 0,
+                    'current_page' => $page,
+                    'per_page' => $perPage,
+                    'last_page' => 1
+                ]
+            ], 'No orders found', 200);
+        }
+        
+        \Log::info('Orders loaded', ['orders' => $orders]);
+        // Load relationships efficiently
+        $orders->load(['items.product', 'user', 'payment']);
+        \Log::info('Orders with relationships loaded', ['orders' => $orders]);
         
         return $this->success([
-            'orders' => $formattedOrders,
+            'orders' => $orders,
+            'pagination' => [
+                'total' => $orders->total(),
+                'current_page' => $orders->currentPage(),
+                'per_page' => $orders->perPage(),
+                'last_page' => $orders->lastPage()
+            ]
         ], 'Success', 200);
     }
     
