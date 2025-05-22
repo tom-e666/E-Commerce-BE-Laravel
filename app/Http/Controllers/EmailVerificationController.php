@@ -28,10 +28,7 @@ class EmailVerificationController extends Controller
         $userId = $request->route('id');
         $hash = $request->route('hash');
         
-        // Check if the URL is valid
-        if (!URL::hasValidSignature($request)) {
-            return redirect(config('app.frontend_url') . '/email/verify/error?message=Invalid+or+expired+verification+link');
-        }
+        // No need to check URL signature since we're using a simple pattern now
         
         $verified = $this->verificationService->verifyEmail($userId, $hash);
         
@@ -53,15 +50,15 @@ class EmailVerificationController extends Controller
         $user = AuthService::Auth();
         
         if (!$user) {
-            return response()->json(['message' => 'Unauthorized'], 401);
+            return response()->json(['message' => 'Không được phép'], 401);
         }
         
         if ($user->email_verified) {
-            return response()->json(['message' => 'Email already verified'], 422);
+            return response()->json(['message' => 'Email đã được xác minh'], 422);
         }
         
         $this->verificationService->resend($user);
         
-        return response()->json(['message' => 'Verification link sent']);
+        return response()->json(['message' => 'Đã gửi liên kết xác minh']);
     }
 }

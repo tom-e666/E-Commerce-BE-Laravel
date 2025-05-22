@@ -9,13 +9,11 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Hash;
 use App\Mail\VerifyEmail;
+use Illuminate\Support\Str;
 
 class EmailVerificationService
 {
-    // public function __construct(EmailVerificationService $emailVerificationService)
-    // {
-    //     $this->emailVerificationService = $emailVerificationService;
-    // }
+
     public function register($_, array $args)
     {
         // Your existing validation and user creation...
@@ -36,7 +34,7 @@ class EmailVerificationService
         return $this->success([
             'user' => $user,
             'token' => $this->generateToken($user)
-        ], 'Registration successful. Please verify your email address.', 201);
+        ], 'Đăng ký thành công. Vui lòng xác minh địa chỉ email của bạn.', 201);
     }
     /**
      * Generate a verification URL for the given user.
@@ -46,22 +44,17 @@ class EmailVerificationService
      */
     public function generateVerificationUrl(UserCredential $user)
     {
-        $frontendUrl = config('app.frontend_url', config('app.url'));
+        $frontendUrl = config('app.frontend_url');
+        $frontendUrl = env('FRONTEND_URL', $frontendUrl);
+
+
+        $token = hash_hmac('sha256', $user->email . Str::random(40), config('app.key'));
         
-        // Generate a signed URL
-        $verificationUrl = URL::temporarySignedRoute(
-            'verification.verify',
-            Carbon::now()->addMinutes(60),
-            [
-                'id' => $user->getKey(),
-                'hash' => sha1($user->email),
-            ]
-        );
+        $user->email_verification_token = $token;
+        $user->email_verification_sent_at = now();
+        $user->save();
         
-        // Convert Laravel's verification URL to your frontend URL
-        $verificationUrl = str_replace(url('/api'), $frontendUrl, $verificationUrl);
-        
-        return $verificationUrl;
+        return "{$frontendUrl}/email/verify/{$token}";
     }
     
     /**
@@ -80,10 +73,11 @@ class EmailVerificationService
             $verificationUrl = $this->generateVerificationUrl($user);
             
             $userData = [
-                'name' => $user->full_name ?: 'Valued Customer',
+                'name' => $user->full_name ?: 'Khách Hàng',
                 'email' => $user->email,
             ];
             
+            // This line creates the connection to the email view through the VerifyEmail mailable
             Mail::to($user->email)->send(new VerifyEmail($userData, $verificationUrl));
             
             // Update the user's record to track when verification email was sent
@@ -91,34 +85,47 @@ class EmailVerificationService
             $user->save();
             
         } catch (\Exception $e) {
-            \Log::error('Email verification error: ' . $e->getMessage());
-            throw new \Exception('Failed to send verification email: ' . $e->getMessage());
+            \Log::error('Lỗi xác minh email: ' . $e->getMessage());
+            throw new \Exception('Không thể gửi email xác minh: ' . $e->getMessage());
         }
     }
     
     /**
      * Verify the email for the given user.
      *
-     * @param int $userId
-     * @param string $hash
+     * @param string $token
      * @return bool
      */
-    public function verifyEmail($userId, $hash)
+    public function verifyEmail($token)
     {
-        $user = UserCredential::findOrFail($userId);
+        // Find user by token
+        $user = UserCredential::where('email_verification_token', $token)->first();
+        
+        if (!$user) {
+            return false;
+        }
         
         // Check if email is already verified
         if ($user->email_verified) {
             return true;
         }
         
-        // Check if the hash matches
-        if (sha1($user->email) != $hash) {
-            return false;
+        // Check if token is expired (token valid for 24 hours)
+        // Handle case where email_verification_sent_at might be a string or null
+        if ($user->email_verification_sent_at) {
+            $sentAt = $user->email_verification_sent_at instanceof Carbon 
+                ? $user->email_verification_sent_at 
+                : Carbon::parse($user->email_verification_sent_at);
+                
+            if ($sentAt->addHours(24)->isPast()) {
+                return false;
+            }
         }
         
+        // Mark email as verified
         $user->email_verified = true;
         $user->email_verified_at = Carbon::now();
+        $user->email_verification_token = null; // Clear the token after use
         $user->save();
         
         return true;

@@ -338,7 +338,7 @@ extend type Mutation {
 # ORDER FEATURE
 #-----------------------------------------------
 # Types
-type Order {
+interface Order { # Changed from 'type Order' to 'interface Order'
   id: ID!
   user_id: ID!
   status: OrderStatus!
@@ -1029,3 +1029,21 @@ extend type Query {
     query: String!
   ): SmartSearchResponse @field(resolver: "SearchResolver@smartSearch")
 }
+
+  extend type Mutation {
+    forgotPassword(
+      email: String!
+    ): Response @field(resolver: "AuthResolver@forgotPassword")
+    
+    resetPassword(
+      user_id: ID!
+      token: String!
+      password: String!
+      password_confirmation: String!
+    ): Response @field(resolver: "AuthResolver@resetPassword")
+    
+    verifyPasswordResetToken(
+      user_id: ID!
+      token: String!
+    ): Response @field(resolver: "AuthResolver@verifyPasswordResetToken")
+  }

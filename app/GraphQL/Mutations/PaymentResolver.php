@@ -78,7 +78,7 @@ final readonly class PaymentResolver
             'amount' => $order->total_price,
             'payment_method' => 'zalopay',
             'payment_status' => 'pending',
-            'transaction_id' => $result['app_trans_id'] ?? $this->generateTransactionId(),
+            'transaction_id' => $result['app_trans_id'] ?? $this->generateTransactionId('ZP'),
         ]);
         
         return $this->success([
@@ -120,7 +120,7 @@ final readonly class PaymentResolver
             'amount' => $order->total_price,
             'payment_method' => 'cod',
             'payment_status' => 'pending',
-            'transaction_id' => $this->generateTransactionId(),
+            'transaction_id' => $this->generateTransactionId('COD'),
         ]);
 
         // Update order status to pending
@@ -166,7 +166,7 @@ final readonly class PaymentResolver
             'amount' => $order->total_price,
             'payment_method' => 'vnpay',
             'payment_status' => 'pending',
-            'transaction_id' => $this->generateTransactionId(),
+            'transaction_id' => $this->generateTransactionId('VNP'),
         ]);
 
         $paymentUrl = $this->vnpayService->createPayment([
@@ -318,8 +318,8 @@ final readonly class PaymentResolver
         return $this->success([], 'Payment deleted successfully', 200);
     }
     
-    private function generateTransactionId()
+    private function generateTransactionId($method='COD')
     {
-        return 'ZP' . time() . rand(1000, 9999);
+        return $method . time() . rand(1000, 9999);
     }
 }

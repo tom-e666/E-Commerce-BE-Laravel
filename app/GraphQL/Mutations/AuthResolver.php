@@ -15,6 +15,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use App\Services\EmailVerificationService;
+use App\Services\PasswordResetService;
 
 
 final readonly class AuthResolver
@@ -191,21 +192,135 @@ final readonly class AuthResolver
             'user' => $user,
         ], 'Verification email sent successfully', 200);
     }
-    public function verifyEmail($_, $args)
+    /**
+     * Verify user's email address with token
+     */
+    public function verifyEmail($_, array $args): array
     {
-        $user = AuthService::Auth();
-        if (!$user) {
-            return $this->error('Unauthorized', 401);
+        try {
+            if (!isset($args['token'])) {
+                return [
+                    'code' => 400,
+                    'message' => 'Token không hợp lệ'
+                ];
+            }
+            
+            $emailService = app(EmailVerificationService::class);
+            $result = $emailService->verifyEmail($args['token']);
+            
+            if (!$result) {
+                return [
+                    'code' => 400,
+                    'message' => 'Token không hợp lệ hoặc đã hết hạn'
+                ];
+            }
+            
+            return [
+                'code' => 200,
+                'message' => 'Email đã được xác minh thành công'
+            ];
+        } catch (\Exception $e) {
+            \Log::error('Email verification error: ' . $e->getMessage());
+            return [
+                'code' => 500,
+                'message' => 'Đã xảy ra lỗi trong quá trình xác minh email'
+            ];
         }
-        if ($user->email_verified) {
-            return $this->error('Email already verified', 422);
-        }
-        // Verify the email address
-        $user->email_verified = true;
-        $user->save();
+    }
 
-        return $this->success([
-            'user' => $user,
-        ], 'Email verified successfully', 200);
+    /**
+     * Handle password reset request
+     */
+    public function forgotPassword($_, array $args): array
+    {
+        try {
+            $validator = Validator::make($args, [
+                'email' => 'required|email'
+            ]);
+            
+            if ($validator->fails()) {
+                return $this->error($validator->errors()->first(), 400);
+            }
+            
+            $passwordResetService = app(PasswordResetService::class);
+            $result = $passwordResetService->sendResetEmail($args['email']);
+            
+            if (!$result) {
+                // We don't want to reveal whether an email exists in the system
+                return $this->success([], 'Nếu địa chỉ email của bạn tồn tại trong hệ thống, chúng tôi đã gửi hướng dẫn đặt lại mật khẩu.', 200);
+            }
+            
+            return $this->success([], 'Liên kết đặt lại mật khẩu đã được gửi thành công', 200);
+        } catch (\Exception $e) {
+            \Log::error('Password reset request error: ' . $e->getMessage());
+            return $this->error('Đã xảy ra lỗi khi xử lý yêu cầu đặt lại mật khẩu', 500);
+        }
+    }
+
+    /**
+     * Reset password with token
+     */
+    public function resetPassword($_, array $args): array
+    {
+        try {
+            $validator = Validator::make($args, [
+                'user_id' => 'required|exists:user_credentials,id',
+                'token' => 'required|string',
+                'password' => 'required|string|min:8|confirmed',
+                'password_confirmation' => 'required'
+            ]);
+            
+            if ($validator->fails()) {
+                return $this->error($validator->errors()->first(), 400);
+            }
+            
+            $passwordResetService = app(PasswordResetService::class);
+            $result = $passwordResetService->resetPassword(
+                $args['user_id'],
+                $args['token'],
+                $args['password']
+            );
+            
+            if (!$result) {
+                return $this->error('Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn', 400);
+            }
+            
+            return $this->success([], 'Mật khẩu đã được đặt lại thành công', 200);
+        } catch (\Exception $e) {
+            \Log::error('Password reset error: ' . $e->getMessage());
+            return $this->error('Đã xảy ra lỗi khi đặt lại mật khẩu', 500);
+        }
+    }
+    
+    /**
+     * Verify if a password reset token is valid without resetting the password
+     */
+    public function verifyPasswordResetToken($_, array $args): array
+    {
+        try {
+            $validator = Validator::make($args, [
+                'user_id' => 'required|exists:user_credentials,id',
+                'token' => 'required|string'
+            ]);
+            
+            if ($validator->fails()) {
+                return $this->error($validator->errors()->first(), 400);
+            }
+            
+            $passwordResetService = app(PasswordResetService::class);
+            $result = $passwordResetService->verifyToken(
+                $args['user_id'],
+                $args['token']
+            );
+            
+            if (!$result) {
+                return $this->error('Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn', 400);
+            }
+            
+            return $this->success([], 'Liên kết đặt lại mật khẩu hợp lệ', 200);
+        } catch (\Exception $e) {
+            \Log::error('Token verification error: ' . $e->getMessage());
+            return $this->error('Đã xảy ra lỗi khi kiểm tra liên kết đặt lại mật khẩu', 500);
+        }
     }
 }

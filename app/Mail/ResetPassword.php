@@ -6,24 +6,24 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
 
-class VerifyEmail extends Mailable
+class ResetPassword extends Mailable
 {
     use Queueable, SerializesModels;
 
     public $name;
-    public $verificationUrl;
+    public $resetUrl;
 
     /**
      * Create a new message instance.
      *
      * @param array $userData
-     * @param string $verificationUrl
+     * @param string $resetUrl
      * @return void
      */
-    public function __construct($userData, $verificationUrl)
+    public function __construct($userData, $resetUrl)
     {
         $this->name = $userData['name'] ?? 'Khách Hàng';
-        $this->verificationUrl = $verificationUrl;
+        $this->resetUrl = $resetUrl;
     }
 
     /**
@@ -33,13 +33,12 @@ class VerifyEmail extends Mailable
      */
     public function build()
     {
-        return $this->subject('Xác Minh Địa Chỉ Email Của Bạn')
+        return $this->subject('Đặt Lại Mật Khẩu')
                     ->priority(1) // High priority
-                    // This line connects to the actual blade template
-                    ->view('emails.verify-email')
+                    ->view('emails.reset-password')
                     ->with([
                         'name' => $this->name,
-                        'verificationUrl' => $this->verificationUrl,
+                        'resetUrl' => $this->resetUrl,
                     ]);
     }
 }

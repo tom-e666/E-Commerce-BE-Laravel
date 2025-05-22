@@ -12,7 +12,9 @@ class VerifyCsrfToken extends Middleware
      * @var array<int, string>
      */
     protected $except = [
-        'payment/callback',
-        'graphql',
+        'webhooks/zalopay/callback', // Exact path for ZaloPay
+        'zalopay-callback',          // Alternative ZaloPay callback path
+        'webhooks/ghn',              // GHN webhook
+        
     ];
 }
