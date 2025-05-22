@@ -291,4 +291,36 @@ final readonly class AuthResolver
             return $this->error('Đã xảy ra lỗi khi đặt lại mật khẩu', 500);
         }
     }
+    
+    /**
+     * Verify if a password reset token is valid without resetting the password
+     */
+    public function verifyPasswordResetToken($_, array $args): array
+    {
+        try {
+            $validator = Validator::make($args, [
+                'user_id' => 'required|exists:user_credentials,id',
+                'token' => 'required|string'
+            ]);
+            
+            if ($validator->fails()) {
+                return $this->error($validator->errors()->first(), 400);
+            }
+            
+            $passwordResetService = app(PasswordResetService::class);
+            $result = $passwordResetService->verifyToken(
+                $args['user_id'],
+                $args['token']
+            );
+            
+            if (!$result) {
+                return $this->error('Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn', 400);
+            }
+            
+            return $this->success([], 'Liên kết đặt lại mật khẩu hợp lệ', 200);
+        } catch (\Exception $e) {
+            \Log::error('Token verification error: ' . $e->getMessage());
+            return $this->error('Đã xảy ra lỗi khi kiểm tra liên kết đặt lại mật khẩu', 500);
+        }
+    }
 }

@@ -1018,4 +1018,9 @@ extend type Query {
       password: String!
       password_confirmation: String!
     ): Response @field(resolver: "AuthResolver@resetPassword")
+    
+    verifyPasswordResetToken(
+      user_id: ID!
+      token: String!
+    ): Response @field(resolver: "AuthResolver@verifyPasswordResetToken")
   }

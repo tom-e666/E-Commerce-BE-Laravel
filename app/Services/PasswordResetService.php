@@ -111,4 +111,29 @@ class PasswordResetService
         
         return true;
     }
+    
+    /**
+     * Verify the token without resetting the password
+     *
+     * @param int $userId
+     * @param string $token
+     * @return bool
+     */
+    public function verifyToken($userId, $token)
+    {
+        $user = UserCredential::where('id', $userId)
+            ->where('email_verification_token', $token)
+            ->first();
+        
+        if (!$user) {
+            return false;
+        }
+        
+        // Check if token is expired (default: 1 hour)
+        if ($user->email_verification_sent_at->addHour()->isPast()) {
+            return false;
+        }
+        
+        return true;
+    }
 }
