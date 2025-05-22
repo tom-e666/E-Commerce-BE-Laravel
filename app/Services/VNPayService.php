@@ -86,4 +86,26 @@ class VNPayService
         $secureHash = hash_hmac('sha512', $hashData, $vnp_HashSecret);
         return $secureHash === $vnp_SecureHash;
     }
+
+    public function handleIPN(array $ipnData)
+    {
+        // 1. Kiểm tra chữ ký
+        if (!$this->validateReturn($ipnData)) {
+            throw new \Exception('Chữ ký không hợp lệ');
+        }
+
+        // 2. Kiểm tra mã phản hồi
+        if ($ipnData['vnp_ResponseCode'] !== '00') {
+            throw new \Exception('Thanh toán thất bại. Mã lỗi: '.$ipnData['vnp_ResponseCode']);
+        }
+
+        // 3. Trả về dữ liệu hợp lệ
+        return [
+            'success' => true,
+            'order_id' => $ipnData['vnp_TxnRef'],
+            'amount' => $ipnData['vnp_Amount'] / 100, // Chuyển về đơn vị VND
+            'transaction_id' => $ipnData['vnp_TransactionNo'],
+            'bank_code' => $ipnData['vnp_BankCode'] ?? null
+        ];
+    }
 }
