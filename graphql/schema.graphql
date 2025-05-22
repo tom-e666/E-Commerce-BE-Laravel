@@ -499,6 +499,27 @@ type VNPayResponse {
   payment_url: String!
 }
 
+type IPNResponse{
+  transaction_id: String
+  order_id: String
+}
+
+type VNPayIPNResponse implements BaseResponse {
+  code: Int!
+  message: String!
+  data: IPNResponse
+}
+
+input VNPayIPNInput {
+    vnp_ResponseCode: String!
+    vnp_TxnRef: String!
+    vnp_Amount: String!
+    vnp_TransactionNo: String
+    vnp_BankCode: String
+    vnp_PayDate: String
+    vnp_SecureHash: String!
+}
+
 # Mutations
 extend type Mutation {
   # USER: Can create payment for own orders
@@ -525,6 +546,8 @@ extend type Mutation {
     vnp_PayDate: String
     vnp_SecureHash: String!
   ): BaseResponseImplementation @field(resolver: "PaymentResolver@verifyPaymentVNPay") @guard(with: ["api"])
+
+  vnpayIPN(input: VNPayIPNInput): VNPayIPNResponse @field(resolver: "PaymentResolver@vnpayIPN") @guard(with: ["api"])
 
   createPaymentCOD(
     order_id: String!

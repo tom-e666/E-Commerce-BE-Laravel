@@ -219,6 +219,33 @@ final readonly class PaymentResolver
             return $this->error('Payment verification failed: ' . $args['vnp_ResponseCode'], 400);
         }
     }
+
+    public function VNPayIPN($_, array $args)
+    {
+        if(!$this->vnpayService->validateReturn($args)){
+            return $this->error('Invalid IPN data', 400);
+        }
+
+        if(!isset($args['vnp_ResponseCode']) || $args['vnp_ResponseCode'] !== '00'){
+            return $this->error('Payment failed', 400);
+        }
+        $payment = Payment::where('transaction_id', $args['vnp_TxnRef'])->first();
+        if(!$payment){
+            return $this->error('Payment not found', 404);
+        }
+
+        $payment->update([
+            'payment_status' => 'completed',
+        ]);
+
+        // Update order status
+        $order = Order::find($payment->order_id);
+        if ($order && $order->status === 'pending') {
+            $order->status = 'confirmed';
+            $order->save();
+        }
+        return $this->success([], 'Payment verified successfully', 200);
+    }
     
     public function updatePaymentStatus($_, array $args)
     {
