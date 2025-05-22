@@ -30,6 +30,11 @@
             border-top-right-radius: 8px;
         }
         
+        .header img {
+            max-height: 60px;
+            margin-bottom: 10px;
+        }
+        
         .header h1 {
             color: white;
             font-size: 24px;
@@ -123,6 +128,7 @@
 <body>
     <div class="container">
         <div class="header">
+            🔥🔥🔥🔥🔥🔥🔥🔥🔥           
             <h1>Đặt Lại Mật Khẩu</h1>
         </div>
         
@@ -150,7 +156,7 @@
         </div>
         
         <div class="footer">
-            <p>© {{ date('Y') }} E-Commerce Laptop. Đã được bảo lưu mọi quyền.</p>
+            <p>© {{ date('Y') }} Cửa Hàng Thương Mại Điện Tử ECommerce Laptop. Đã được bảo lưu mọi quyền.</p>
             <p>280 An Dương Vương, Quận 5, Thành phố Hồ Chí Minh, Việt Nam</p>
         </div>
     </div>

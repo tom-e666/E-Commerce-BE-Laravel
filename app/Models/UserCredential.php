@@ -30,6 +30,8 @@ class UserCredential extends Authenticatable implements JWTSubject, MustVerifyEm
         'email_verified',
         'email_verification_token',
         'email_verification_sent_at',
+        // 'password_reset_token',
+        // 'password_reset_sent_at',
         // 'phone_verified',
     ];
 
@@ -41,6 +43,7 @@ class UserCredential extends Authenticatable implements JWTSubject, MustVerifyEm
     protected $casts = [
         'email_verified' => 'boolean',
         'email_verification_sent_at' => 'datetime',
+        'password_reset_sent_at' => 'datetime',
     ];
 
     /**

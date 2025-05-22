@@ -1007,16 +1007,15 @@ extend type Query {
   ): SmartSearchResponse @field(resolver: "SearchResolver@smartSearch")
 }
 
-extend type Mutation {
-  # Password reset mutations
-  forgotPassword(
-    email: String!
-  ): Response @field(resolver: "AuthResolver@forgotPassword")
-  
-  resetPassword(
-    user_id: ID!
-    token: String!
-    password: String!
-    password_confirmation: String!
-  ): Response @field(resolver: "AuthResolver@resetPassword")
-}
+  extend type Mutation {
+    forgotPassword(
+      email: String!
+    ): Response @field(resolver: "AuthResolver@forgotPassword")
+    
+    resetPassword(
+      user_id: ID!
+      token: String!
+      password: String!
+      password_confirmation: String!
+    ): Response @field(resolver: "AuthResolver@resetPassword")
+  }

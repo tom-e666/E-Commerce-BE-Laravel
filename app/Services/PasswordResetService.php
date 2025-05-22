@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Models\UserCredential;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use App\Mail\ResetPassword;
 
@@ -25,22 +24,13 @@ class PasswordResetService
             return false;
         }
         
-        // Delete any existing tokens for this user
-        DB::table('password_reset_tokens')
-            ->where('user_id', $user->id)
-            ->delete();
-        
         // Create a new token
         $token = Str::random(60);
         
-        // Store the token in database
-        DB::table('password_reset_tokens')->insert([
-            'user_id' => $user->id,
-            'token' => $token,
-            'expires_at' => now()->addHours(1),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        // Store the token in user model using the existing email verification fields
+        $user->email_verification_token = $token;
+        $user->email_verification_sent_at = now();
+        $user->save();
         
         return $token;
     }
@@ -87,7 +77,7 @@ class PasswordResetService
         $frontendUrl = config('app.frontend_url');
         $frontendUrl = env('FRONTEND_URL', $frontendUrl);
         
-        return "{$frontendUrl}/reset-password/{$userId}/{$token}";
+        return "{$frontendUrl}/forgotPassword/{$userId}/{$token}";
     }
     
     /**
@@ -100,29 +90,24 @@ class PasswordResetService
      */
     public function resetPassword($userId, $token, $newPassword)
     {
-        $tokenRecord = DB::table('password_reset_tokens')
-            ->where('user_id', $userId)
-            ->where('token', $token)
-            ->where('expires_at', '>', now())
+        $user = UserCredential::where('id', $userId)
+            ->where('email_verification_token', $token)
             ->first();
         
-        if (!$tokenRecord) {
+        if (!$user) {
             return false;
         }
         
-        $user = UserCredential::find($userId);
-        if (!$user) {
+        // Check if token is expired (default: 1 hour)
+        if ($user->email_verification_sent_at->addHour()->isPast()) {
             return false;
         }
         
         // Update user password
         $user->password = Hash::make($newPassword);
+        $user->email_verification_token = null; // Clear the token
+        $user->email_verification_sent_at = null; // Clear the timestamp
         $user->save();
-        
-        // Delete token after successful password reset
-        DB::table('password_reset_tokens')
-            ->where('user_id', $userId)
-            ->delete();
         
         return true;
     }
