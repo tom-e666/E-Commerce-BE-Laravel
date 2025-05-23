@@ -8,6 +8,8 @@ use App\Models\Order;
 use App\Services\AuthService;
 use App\Services\GHNService;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\DB;
+use App\Models\Product;
 
 final readonly class ShippingResolver
 {
@@ -156,9 +158,42 @@ final readonly class ShippingResolver
                     'message' => 'Shipping has been delivered, cannot be cancelled',
                 ];
             }
-            if($shipping->shipping_method==='GHN'){
-                $response = $this->ghnService->cancelShippingOrder($shipping->ghn_order_code);
-                if (isset($response['code']) && $response['code'] === 200) {
+            // Use database transaction to ensure all operations succeed or fail together
+            DB::beginTransaction();
+            try {
+                if($shipping->shipping_method==='GHN'){
+                    $response = $this->ghnService->cancelShippingOrder($shipping->ghn_order_code);
+                    if (isset($response['code']) && $response['code'] === 200) {
+                        $shipping->status = 'cancelled';
+                        $shipping->save();
+                        
+                        // Update order status and restore inventory
+                        if (in_array($order->status, ['confirmed', 'processing', 'shipping'])) {
+                            $order->status = 'cancelled';
+                            $order->save();
+                            
+                            // Restore product inventory
+                            foreach ($order->items as $item) {
+                                $product = Product::find($item->product_id);
+                                if ($product) {
+                                    $product->stock += $item->quantity;
+                                    $product->save();
+                                }
+                            }
+                        }
+                        
+                        DB::commit();
+                        return [
+                            'code' => 200,
+                            'message' => 'Shipping cancelled successfully',
+                        ];
+                    }
+                    return [
+                        'code' => $response['code'] ?? 500,
+                        'message' => $response['message'] ?? 'Failed to cancel shipping',
+                    ];
+                }
+                if($shipping->shipping_method==='SHOP'){
                     $shipping->status = 'cancelled';
                     $shipping->save();
                     return [
@@ -167,22 +202,16 @@ final readonly class ShippingResolver
                     ];
                 }
                 return [
-                    'code' => $response['code'] ?? 500,
-                    'message' => $response['message'] ?? 'Failed to cancel shipping',
+                    'code' => 400,
+                    'message' => 'Shipping method not supported for cancellation',
                 ];
-            }
-            if($shipping->shipping_method==='SHOP'){
-                $shipping->status = 'cancelled';
-                $shipping->save();
+            } catch (\Exception $e) {
+                DB::rollBack();
                 return [
-                    'code' => 200,
-                    'message' => 'Shipping cancelled successfully',
+                    'code' => 500,
+                    'message' => 'An error occurred while cancelling shipping',
                 ];
             }
-            return [
-                'code' => 400,
-                'message' => 'Shipping method not supported for cancellation',
-            ];
         
     }
     private function calculateShippingWeight($order)
@@ -235,22 +264,52 @@ final readonly class ShippingResolver
             ];
         }
         
-        $shipping->status = $args['status'];
-        $shipping->save();
-        
-        if ($args['status'] === 'delivered') {
-            $order = Order::find($shipping->order_id);
-            if ($order) {
-                $order->status = 'delivered';
-                $order->save();
+        DB::beginTransaction();
+        try {
+            $shipping->status = $args['status'];
+            $shipping->save();
+            
+            // When shipping is delivered, update order status to delivered
+            if ($args['status'] === 'delivered') {
+                $order = Order::find($shipping->order_id);
+                if ($order) {
+                    $order->status = 'delivered';
+                    $order->save();
+                }
             }
+            
+            // When shipping is cancelled, update order and restore inventory
+            if ($args['status'] === 'cancelled') {
+                $order = Order::find($shipping->order_id);
+                if ($order && in_array($order->status, ['confirmed', 'processing', 'shipping'])) {
+                    $order->status = 'cancelled';
+                    $order->save();
+                    
+                    // Restore product inventory
+                    foreach ($order->items as $item) {
+                        $product = Product::find($item->product_id);
+                        if ($product) {
+                            $product->stock += $item->quantity;
+                            $product->save();
+                        }
+                    }
+                }
+            }
+            
+            DB::commit();
+            return [
+                'code' => 200,
+                'message' => 'Shipping status updated successfully',
+                'shipping' => $shipping
+            ];
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return [
+                'code' => 500,
+                'message' => 'An error occurred while updating shipping status',
+                'shipping' => null
+            ];
         }
-        
-        return [
-            'code' => 200,
-            'message' => 'Shipping status updated successfully',
-            'shipping' => $shipping
-        ];
     }
     /**
      * Update shipping address and recipient information

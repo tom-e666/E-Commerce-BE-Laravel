@@ -151,7 +151,7 @@ final readonly class PaymentResolver
         
         // Check if payment already exists for this order
         $existingPayment = Payment::where('order_id', $args['order_id'])
-                                ->whereIn('payment_status', ['pending, completed'])
+                                ->whereIn('payment_status', ['pending', 'completed'])
                                 ->first();
                                 
         if ($existingPayment) {

@@ -395,6 +395,15 @@ final readonly class OrderResolver
             return $this->error('Order not found', 404);
         }
 
+        if(!in_array($order->status, ['pending', 'confirmed', 'processing'])) {
+            return $this->error('Order cannot be cancelled at this stage', 400);
+        }
+
+        // Update order status
+        $order->status = 'cancelled';
+        $order->save();
+
+        // Restore product inventory
         foreach ($order->items as $item) {
             $product = Product::find($item->product_id);
             if ($product) {
@@ -403,12 +412,14 @@ final readonly class OrderResolver
             }
         }
 
-        if($order->payment)
+        // Update payment status
+        if($order->payment) {
             $order->payment->payment_status = 'refunded';
             $order->payment->save();
         }
 
-        if($order->shipping){
+        // Update shipping status
+        if($order->shipping) {
             $order->shipping->status = 'cancelled';
             $order->shipping->save();
         }
@@ -439,7 +450,7 @@ final readonly class OrderResolver
         }
 
         if ($order->status !== 'confirmed' && $order->status !== 'processing') {
-            return $this->error('Order must be confirmed/processed before shipping', 400);
+            return $this->error('Order must be confirmed or processed before shipping', 400);
         }
         $order->status = 'shipping';
         $order->save();
@@ -480,6 +491,5 @@ final readonly class OrderResolver
             'order' => $order->load('items.product'),
         ], 'Order delivered successfully', 200);
     }
-
-
-    }
+}
+ 

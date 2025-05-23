@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
-use App\Models\Shipping;
 use App\Models\Order;
+use App\Models\Shipping;
+use App\Services\GHNStatusMapService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Config; // Added for config access
 use Illuminate\Support\Str; // Added for Str::equals
 
@@ -13,87 +15,68 @@ class GHNWebhookController extends Controller
 {
     public function handleWebhook(Request $request)
     {
+        Log::info('GHN Webhook received', $request->all());
+        
+        // Validate request data
+        $data = $request->all();
+        if (!isset($data['order_code']) || !isset($data['status'])) {
+            return response()->json(['error' => 'Invalid webhook data'], 400);
+        }
+        
+        // Find shipping by GHN order code
+        $shipping = Shipping::where('ghn_order_code', $data['order_code'])->first();
+        if (!$shipping) {
+            return response()->json(['error' => 'Shipping not found'], 404);
+        }
+        
+        // Process status update using our mapping service
+        $ghnStatus = $data['status'];
+        $appShippingStatus = GHNStatusMapService::mapShippingStatus($ghnStatus);
+        $appOrderStatus = GHNStatusMapService::mapOrderStatus($ghnStatus);
+        
+        DB::beginTransaction();
         try {
-            // Verify Webhook Signature (Example)
-            // This is a crucial security step. GHN should provide a secret key
-            // and specify how they generate the signature (e.g., HMAC-SHA256 of the body).
-            $ghnWebhookSecret = Config::get('services.ghn.webhook_secret');
-            if ($ghnWebhookSecret) {
-                $signature = $request->header('X-Ghn-Signature'); // Adjust header name if different
-                if (!$signature) {
-                    Log::warning('GHN Webhook: Missing signature');
-                    return response()->json(['message' => 'Missing signature'], 401);
-                }
-
-                $payload = $request->getContent();
-                $computedSignature = hash_hmac('sha256', $payload, $ghnWebhookSecret);
-
-                if (!Str::equals($signature, $computedSignature)) {
-                    Log::warning('GHN Webhook: Invalid signature', [
-                        'received_signature' => $signature,
-                        'computed_signature' => $computedSignature,
-                    ]);
-                    return response()->json(['message' => 'Invalid signature'], 403);
-                }
-                Log::info('GHN Webhook: Signature verified successfully.');
-            } else {
-                Log::warning('GHN Webhook: Secret not configured. Skipping signature verification. THIS IS INSECURE FOR PRODUCTION.');
-            }
-
-            $data = $request->all();
-            Log::info('GHN Webhook Received: ', $data);
-            $orderCode = $data['order_code'] ?? null;
-            $status = $data['status'] ?? null;
-            
-            if(!$orderCode || !$status) {
-                Log::warning('GHN Webhook: Invalid data - missing order_code or status.', $data);
-                return response()->json(['message' => 'Invalid data'], 400);
-            }
-            
-            $shipping = Shipping::where('ghn_order_code', $orderCode)->first();
-            if (!$shipping) {
-                Log::warning('GHN Webhook: Shipping not found for order_code.', ['order_code' => $orderCode]);
-                return response()->json(['message' => 'Shipping not found'], 404);
-            }
-            
-            $shipping->status = $status;
+            // Update shipping status
+            $shipping->status = $appShippingStatus;
             $shipping->save();
-            Log::info("GHN Webhook: Updated shipping status for ghn_order_code {$orderCode} to {$status}.");
             
-            if(in_array($status, ['delivered', 'cancelled', 'returned'])) {
+            // Update order status if needed
+            if ($appOrderStatus) {
                 $order = Order::find($shipping->order_id);
                 if ($order) {
                     $previousOrderStatus = $order->status;
-                    // Update order status based on shipping status
-                    $newOrderStatus = $status === 'delivered' ? 'completed' : 'cancelled';
-                    $order->status = $newOrderStatus;
+                    $order->status = $appOrderStatus;
                     $order->save();
-                    Log::info("GHN Webhook: Updated order {$order->id} status from {$previousOrderStatus} to {$newOrderStatus}.");
                     
-                    // If cancelled or returned, restore product stock
-                    if ($status === 'cancelled' || $status === 'returned') {
+                    // Restore inventory if needed
+                    if (GHNStatusMapService::shouldRestoreInventory($ghnStatus)) {
                         foreach ($order->items as $item) {
-                            $product = $item->product; // Assuming OrderItem has a 'product' relationship
+                            $product = $item->product;
                             if ($product) {
                                 $product->stock += $item->quantity;
                                 $product->save();
-                                Log::info("GHN Webhook: Restored {$item->quantity} stock for product {$product->id} (Order {$order->id}).");
-                            } else {
-                                Log::warning("GHN Webhook: Product not found for order item {$item->id} while trying to restore stock.");
                             }
                         }
                     }
-                } else {
-                    Log::warning("GHN Webhook: Order not found for shipping_id {$shipping->id} (order_id {$shipping->order_id}) when trying to update final status.");
+                    
+                    Log::info('Order status updated via GHN webhook', [
+                        'order_id' => $order->id,
+                        'previous_status' => $previousOrderStatus,
+                        'new_status' => $appOrderStatus,
+                        'ghn_status' => $ghnStatus
+                    ]);
                 }
-                // The response for final status updates was inside the 'if ($order)' block, moved out.
             }
-            // Moved the successful response outside the final status block to ensure it's always sent if no error before.
-            return response()->json(['message' => 'Shipping status updated successfully'], 200);
-
+            
+            DB::commit();
+            return response()->json(['success' => true]);
         } catch (\Exception $e) {
-            Log::error('GHN Webhook Error: ', ['error' => $e->getMessage()]);
-            return response()->json(['message' => 'Internal server error'], 500);
+            DB::rollBack();
+            Log::error('GHN Webhook error', [
+                'message' => $e->getMessage(),
+                'data' => $data
+            ]);
+            return response()->json(['error' => 'Failed to process webhook'], 500);
         }
     }
 }
