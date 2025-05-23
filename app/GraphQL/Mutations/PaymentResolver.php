@@ -181,43 +181,6 @@ final readonly class PaymentResolver
         ], 'Payment created successfully', 200);
     }
 
-    public function verifyPaymentVNPay($_, array $args)
-    {
-        $user = auth('api')->user();
-        
-        if(!isset($args['vnp_ResponseCode'])) {
-            return $this->error('vnp_ResponseCode is required', 400);
-        }
-        
-        $payment = Payment::where('transaction_id', $args['vnp_TxnRef'])->first();
-        
-        if(!$payment){
-            return $this->error('Payment not found', 404);
-        }
-        
-        // Check if user can verify this payment using policy
-        if (Gate::denies('verify', $payment)) {
-            return $this->error('You are not authorized to verify this payment', 403);
-        }
-        
-        // Update payment status based on response code
-        if ($args['vnp_ResponseCode'] === '00') {
-            $payment->payment_status = 'completed';
-            $payment->save();
-            
-            // Update order status
-            $order = Order::find($payment->order_id);
-            if ($order && $order->status === 'pending') {
-                $order->status = 'confirmed';
-                $order->save();
-            }
-            
-            return $this->success([], 'Payment verified successfully', 200);
-        } else {
-            return $this->error('Payment verification failed: ' . $args['vnp_ResponseCode'], 400);
-        }
-    }
-
     public function VNPayIPN($_, array $args)
     {
         if(!$this->vnpayService->validateReturn($args)){

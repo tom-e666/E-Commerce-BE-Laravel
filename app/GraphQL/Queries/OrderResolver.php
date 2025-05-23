@@ -364,4 +364,63 @@ final readonly class OrderResolver
             return $this->error('Internal server error: ' . $e->getMessage(), 500);
         }
     }
+    public function getStatusOrderByTransaction($_, array $args): array
+    {
+        try {
+            $user = auth('api')->user();
+
+            if (!isset($args['transaction_id'])) {
+                return $this->error('transaction_id is required', 400);
+            }
+
+            \Log::info('Transaction ID:', ['transaction_id' => $args['transaction_id']]);
+
+            $payment = \App\Models\Payment::where('transaction_id', $args['transaction_id'])->first();
+
+            if (!$payment) {
+                return $this->error('Payment not found', 404);
+            }
+
+            $order = Order::with(['items.product', 'user', 'payment'])
+                ->find($payment->order_id);
+
+            if (!$order) {
+                return $this->error('Order not found', 404);
+            }
+
+            \Log::info('Order retrieved by transaction', [
+                'user_id' => $user ? $user->id : null,
+                'order_id' => $order->id,
+                'transaction_id' => $args['transaction_id'],
+            ]);
+
+            $formattedOrder = [
+                'id' => $order->id,
+                'status' => $order->status,
+                'total_price' => (float)$order->total_price,
+                'created_at' => $order->created_at->format('Y-m-d H:i:s'),
+                'items' => $order->items->map(function($item){
+                    return [
+                        'id' => $item->id,
+                        'product_id' => $item->product_id,
+                        'name' => $item->product ? $item->product->name : 'Unknown Product',
+                        'price' => (float)$item->price,
+                        'quantity' => $item->quantity,
+                        'image' => null,
+                    ];
+                })
+            ];
+
+            return $this->success([
+                'order' => $formattedOrder,
+            ], 'Success', 200);
+        } catch (\Throwable $e) {
+            \Log::error('Error in getStatusOrderByTransaction', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'args' => $args,
+            ]);
+            return $this->error('Internal server error: ' . $e->getMessage(), 500);
+        }
+    }
 }

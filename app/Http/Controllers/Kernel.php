@@ -48,6 +48,6 @@ class Kernel extends HttpKernel
         'auth.api' => \Tymon\JWTAuth\Http\Middleware\Authenticate::class,
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
-        'check.blacklist' => \App\Http\Middleware\CheckBlacklistToken::class,
+        // 'check.blacklist' => \App\Http\Middleware\CheckBlacklistToken::class,
     ];
 }
