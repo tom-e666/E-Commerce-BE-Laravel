@@ -65,15 +65,15 @@ final class MetricsResolver
             // Revenue metrics
             $revenueToday = Order::whereDate('created_at', $today)
                 ->where('status', 'completed')
-                ->sum('total_amount');
+                ->sum('total_price');
             
             $revenueWeek = Order::where('created_at', '>=', $startOfWeek)
                 ->where('status', 'completed')
-                ->sum('total_amount');
+                ->sum('total_price');
                 
             $revenueMonth = Order::where('created_at', '>=', $startOfMonth)
                 ->where('status', 'completed')
-                ->sum('total_amount');
+                ->sum('total_price');
             
             // Product metrics
             $totalProducts = Product::count();
