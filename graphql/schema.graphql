@@ -420,9 +420,7 @@ extend type Mutation {
     @field(resolver: "OrderResolver@createOrder")
     @guard(with: ["api"])
 
-  createOrderFromCart(
-    shipping_address: String!
-  ): OrderResponse!
+  createOrderFromCart: OrderResponse!
     @field(resolver: "OrderResolver@createOrderFromCart")
     @guard(with: ["api"])
   
@@ -678,8 +676,8 @@ extend type Mutation {
     district_name: String!
     ward_name: String!
     address: String!
-    recipient_name: String!
-    recipient_phone: String!
+    recipient_name: String
+    recipient_phone: String
     note: String
     shipping_method: String!
   ): ShippingResponse! @field(resolver: "ShippingResolver@createShipping") @guard(with: ["api"])

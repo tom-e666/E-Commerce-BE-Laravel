@@ -211,9 +211,6 @@ final class MetricsResolver
         $cacheKey = "product_metrics_limit_{$limit}_" . date('Y-m-d');
         $cacheDuration = 60; // 1 hour
         
-        // Force skip cache for debugging
-        Cache::forget($cacheKey);
-        
         return Cache::remember($cacheKey, $cacheDuration, function() use ($limit) {
             // Log the SQL query for top selling products
             Log::info('Building top selling products query', ['limit' => $limit]);
@@ -326,18 +323,11 @@ final class MetricsResolver
                 $formattedLowStockProducts = [];
             }
             
-            // Debug return - return empty arrays to test if query is the issue
-            return $this->success([
-                'top_selling_products' => [], // Return empty array for debugging
-                'low_stock_products' => []    // Return empty array for debugging
-            ], 'Product metrics debug mode - returning empty arrays', 200);
-            
-            /* Original return (commented out for debugging)
+            // Return the actual formatted data instead of empty arrays
             return $this->success([
                 'top_selling_products' => $formattedTopProducts,
                 'low_stock_products' => $formattedLowStockProducts
             ], 'Product metrics retrieved successfully', 200);
-            */
         });
     }
     
