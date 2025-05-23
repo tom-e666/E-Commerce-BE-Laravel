@@ -364,7 +364,7 @@ final readonly class OrderResolver
             return $this->error('Internal server error: ' . $e->getMessage(), 500);
         }
     }
-    public function getStatusOrderByTransaction($_, array $args): array
+    public function getOrderByTransaction($_, array $args): array
     {
         try {
             $user = auth('api')->user();

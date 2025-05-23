@@ -408,6 +408,7 @@ extend type Query {
     @guard(with: ["api"]) 
   getUserOrders: OrdersResponse @field(resolver: "OrderResolver@getUserOrders") @guard(with: ["api"])
   getStatusOrder(order_id: ID!): OrderResponse @field(resolver: "OrderResolver@getStatusOrder") @guard(with: ["api"])
+  getOrderByTransaction(transaction_id: String!): OrderResponse @field(resolver: "OrderResolver@getOrderByTransaction") @guard(with: ["api"])
 }
 
 # Mutations
