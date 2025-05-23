@@ -184,7 +184,7 @@ final readonly class OrderResolver
             }
 
             return $this->success([
-                'orders' => $this->formatOrderResponse($order),
+                'order' => $this->formatOrderResponse($order),
             ], 'Order created successfully', 200);
         } catch (\Exception $e) {
             DB::rollBack();

@@ -370,7 +370,7 @@ type OrderResult implements Order{
 input OrderItemInput {
   product_id: ID!
   quantity: Int!
-  shipping_address: String!
+  # shipping_address: String!
 }
 
 enum OrderStatus {
@@ -406,6 +406,7 @@ extend type Query {
     @field(resolver: "OrderResolver@getAllOrders") 
     @guard(with: ["api"]) 
   getUserOrders: OrdersResponse @field(resolver: "OrderResolver@getUserOrders") @guard(with: ["api"])
+  getStatusOrder(order_id: ID!): OrderResponse @field(resolver: "OrderResolver@getStatusOrder") @guard(with: ["api"])
 }
 
 # Mutations

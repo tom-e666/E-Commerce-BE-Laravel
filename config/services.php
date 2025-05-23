@@ -43,6 +43,7 @@ return [
         'api_url' => env('VNPAY_API_URL'),
         'api_username' => env('VNPAY_API_USERNAME'),
         'api_password' => env('VNPAY_API_PASSWORD'),
+        'ipn_url' => env('VNPAY_IPN_URL'),
     ],
 
 ];

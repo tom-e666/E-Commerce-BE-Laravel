@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Log;
 
 class VNPayService
 {
@@ -15,14 +16,11 @@ class VNPayService
         
         $vnp_TxnRef = $paymentData['order_id'];
         $vnp_OrderInfo = $paymentData['order_info'];
-        $vnp_OrderType = $paymentData['order_type'];
+        $vnp_OrderType = $paymentData['order_type'] ?? 'other';
         $vnp_Amount = $paymentData['amount'] * 100;
         $vnp_Locale = $paymentData['locale'] ?? 'vn';
         $vnp_BankCode = $paymentData['bank_code'] ?? '';
         $vnp_IpAddr = request()->ip();
-
-        // $expireMinutes = $paymentData['expire_minutes'] ?? 15;
-        // $vnp_ExpireDate = date('YmdHis', strtotime("+{$expireMinutes} minutes"));
         
         $inputData = [
             "vnp_Version" => "2.1.0",
@@ -37,7 +35,6 @@ class VNPayService
             "vnp_OrderType" => $vnp_OrderType,
             "vnp_ReturnUrl" => $vnp_Returnurl,
             "vnp_TxnRef" => $vnp_TxnRef,
-            // "vnp_ExpireDate" => $vnp_ExpireDate,
         ];
         
         if (!empty($vnp_BankCode)) {
@@ -68,8 +65,15 @@ class VNPayService
     public function validateReturn(array $data)
     {
         $vnp_HashSecret = config('services.vnpay.hash_secret');
+        
+        if (!isset($data['vnp_SecureHash'])) {
+            Log::error('VNPay validation: Missing vnp_SecureHash');
+            return false;
+        }
+        
         $vnp_SecureHash = $data['vnp_SecureHash'];
         unset($data['vnp_SecureHash']);
+        unset($data['vnp_SecureHashType']); // Remove if exists
         
         ksort($data);
         $i = 0;
@@ -84,28 +88,55 @@ class VNPayService
         }
         
         $secureHash = hash_hmac('sha512', $hashData, $vnp_HashSecret);
+        
+        Log::info('VNPay signature validation', [
+            'expected' => $secureHash,
+            'received' => $vnp_SecureHash,
+            'hash_data' => $hashData
+        ]);
+        
         return $secureHash === $vnp_SecureHash;
     }
 
     public function handleIPN(array $ipnData)
     {
+        Log::info('VNPay IPN Data:', $ipnData);
+
         // 1. Kiểm tra chữ ký
         if (!$this->validateReturn($ipnData)) {
+            Log::error('VNPay IPN: Invalid signature', $ipnData);
             throw new \Exception('Chữ ký không hợp lệ');
         }
 
         // 2. Kiểm tra mã phản hồi
-        if ($ipnData['vnp_ResponseCode'] !== '00') {
-            throw new \Exception('Thanh toán thất bại. Mã lỗi: '.$ipnData['vnp_ResponseCode']);
+        $responseCode = $ipnData['vnp_ResponseCode'];
+        $transactionId = $ipnData['vnp_TxnRef']; // transaction_id
+        $payment = \App\Models\Payment::where('transaction_id', $transactionId)->first();
+
+        if (!$payment) {
+            Log::error('VNPay IPN: Payment not found', ['transaction_id' => $transactionId]);
+            throw new \Exception('Payment not found');
         }
 
-        // 3. Trả về dữ liệu hợp lệ
-        return [
-            'success' => true,
-            'order_id' => $ipnData['vnp_TxnRef'],
-            'amount' => $ipnData['vnp_Amount'] / 100, // Chuyển về đơn vị VND
-            'transaction_id' => $ipnData['vnp_TransactionNo'],
-            'bank_code' => $ipnData['vnp_BankCode'] ?? null
+        $orderId = $payment->order_id;
+
+        $result = [
+            'success' => $responseCode === '00',
+            'order_id' => $orderId,
+            'transaction_id' => $transactionId,
+            'amount' => $ipnData['vnp_Amount'] / 100,
+            'bank_code' => $ipnData['vnp_BankCode'] ?? null,
+            'response_code' => $responseCode
         ];
+
+        if ($responseCode !== '00') {
+            Log::warning('VNPay IPN: Payment failed', [
+                'response_code' => $responseCode,
+                'transaction_id' => $transactionId,
+                'order_id' => $orderId
+            ]);
+        }
+
+        return $result;
     }
 }

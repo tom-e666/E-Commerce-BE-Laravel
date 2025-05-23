@@ -1,22 +1,49 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\GHNWebhookController;
-use App\Http\Controllers\ZalopayController;
-use App\Http\Controllers\Auth\EmailVerificationController;
+namespace App\Http;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+use Illuminate\Foundation\Http\Kernel as HttpKernel;
 
-Route::post('webhooks/ghn', [GHNWebhookController::class, 'handleWebhook']);
+class Kernel extends HttpKernel
+{
+    /**
+     * The application's global HTTP middleware stack.
+     *
+     * @var array
+     */
+    protected $middleware = [
+        \Illuminate\Foundation\Http\Middleware\CheckForMaintenanceMode::class,
+        \Illuminate\Routing\Middleware\SubstituteBindings::class,
+        \Illuminate\Http\Middleware\SetCacheHeaders::class,
+        \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
+        // \Illuminate\Session\Middleware\StartSession::class,
+        // \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+        // \Illuminate\Auth\Middleware\AuthenticateSession::class,
+        \App\Http\Middleware\VNPayIPN::class,
+    ];
 
-// Payment webhook routes with extended timeout
-Route::post('webhooks/zalopay/callback', [ZalopayController::class, 'callback'])
-    ->middleware('web')
-    ->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]); // Explicitly exclude CSRF for this route
+    /**
+     * The application's route middleware groups.
+     *
+     * @var array
+     */
+    protected $middlewareGroups = [
+        'api' => [
+            \Tymon\JWTAuth\Http\Middleware\Authenticate::class,
+            'throttle:60,1',
+            \Illuminate\Routing\Middleware\SubstituteBindings::class,
+        ],
+    ];
 
-Route::get('payment/return', [ZalopayController::class, 'return'])->name('payment.return');
-
-// Note: Email verification is now handled entirely through the frontend + GraphQL
-// The /api/email/verify/{id}/{hash} route is no longer needed
+    /**
+     * The application's route middleware.
+     *
+     * @var array
+     */
+    protected $routeMiddleware = [
+        'auth' => \App\Http\Middleware\Authenticate::class,
+        'auth.api' => \Tymon\JWTAuth\Http\Middleware\Authenticate::class,
+        'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
+        'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
+    ];
+}
