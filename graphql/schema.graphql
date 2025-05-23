@@ -31,6 +31,7 @@ type UserCredential {
   full_name: String
   role: String    
   email_verified: Boolean
+  created_at: String
 }
 
 type UserResponse implements BaseResponse {

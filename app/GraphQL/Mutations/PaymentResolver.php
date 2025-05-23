@@ -123,7 +123,6 @@ final readonly class PaymentResolver
             'transaction_id' => $this->generateTransactionId('COD'),
         ]);
 
-        // Update order status to pending
         $order->status = 'confirmed';
         $order->save();
         
@@ -131,7 +130,6 @@ final readonly class PaymentResolver
             'transaction_id' => $payment->transaction_id,
         ], 'Payment created successfully', 200);
     }
-
     public function createPaymentVNPay($_, array $args)
     {
         $user = auth('api')->user();

@@ -190,40 +190,57 @@ final class MetricsResolver
      */
     public function getProductMetrics($_, array $args)
     {
+        Log::info('Product metrics requested', ['args' => $args]);
+        
         $user = AuthService::Auth();
         if (!$user) {
+            Log::warning('Product metrics access denied - unauthorized');
             return $this->error('Unauthorized', 401);
         }
         
         // Check authorization using policy
         if (Gate::denies('viewProductMetrics', 'App\Models\Metrics')) {
+            Log::warning('Product metrics access denied - policy', ['user_id' => $user->id]);
             return $this->error('You are not authorized to view product metrics', 403);
         }
         
         $limit = $args['limit'] ?? 10;
+        Log::info('Product metrics limit', ['limit' => $limit]);
         
         // Cache key based on limit
         $cacheKey = "product_metrics_limit_{$limit}_" . date('Y-m-d');
         $cacheDuration = 60; // 1 hour
         
+        // Force skip cache for debugging
+        Cache::forget($cacheKey);
+        
         return Cache::remember($cacheKey, $cacheDuration, function() use ($limit) {
-            // Get top selling products
-            $topSellingProducts = DB::table('order_items')
-                ->join('products', 'order_items.product_id', '=', 'products.id')
-                ->join('orders', 'order_items.order_id', '=', 'orders.id')
-                ->select(
-                    'products.id',
-                    'products.name',
-                    DB::raw('SUM(order_items.quantity) as sales_count'),
-                    DB::raw('SUM(order_items.quantity * order_items.price) as revenue'),
-                    'products.stock as stock_remaining'
-                )
-                ->where('orders.status', 'completed')
-                ->groupBy('products.id', 'products.name', 'products.stock')
-                ->orderBy('sales_count', 'desc')
-                ->limit($limit)
-                ->get()
-                ->map(function($item) {
+            // Log the SQL query for top selling products
+            Log::info('Building top selling products query', ['limit' => $limit]);
+            
+            try {
+                // Get top selling products
+                $topSellingProductsQuery = DB::table('order_items')
+                    ->join('products', 'order_items.product_id', '=', 'products.id')
+                    ->join('orders', 'order_items.order_id', '=', 'orders.id')
+                    ->select(
+                        'products.id',
+                        'products.name',
+                        DB::raw('SUM(order_items.quantity) as sales_count'),
+                        DB::raw('SUM(order_items.quantity * order_items.price) as revenue'),
+                        'products.stock as stock_remaining'
+                    )
+                    ->where('orders.status', 'completed')
+                    ->groupBy('products.id', 'products.name', 'products.stock')
+                    ->orderBy('sales_count', 'desc')
+                    ->limit($limit);
+                
+                Log::info('Top selling products SQL', ['sql' => $topSellingProductsQuery->toSql(), 'bindings' => $topSellingProductsQuery->getBindings()]);
+                
+                $topSellingProducts = $topSellingProductsQuery->get();
+                Log::info('Top selling products raw result', ['count' => $topSellingProducts->count(), 'data' => $topSellingProducts->toArray()]);
+                
+                $formattedTopProducts = $topSellingProducts->map(function($item) {
                     // Calculate stock percentage
                     $originalStock = $item->sales_count + $item->stock_remaining;
                     $stockPercentage = $originalStock > 0 
@@ -239,44 +256,88 @@ final class MetricsResolver
                         'stock_percentage' => $stockPercentage
                     ];
                 });
+            } catch (\Exception $e) {
+                Log::error('Error getting top selling products', [
+                    'message' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+                $formattedTopProducts = [];
+            }
             
-            // Get low stock products
-            $lowStockProducts = Product::where('stock', '<=', 10)
-                ->where('stock', '>', 0)
-                ->where('status', true)
-                ->select('id', 'name', 'stock as stock_remaining')
-                ->orderBy('stock', 'asc')
-                ->limit($limit)
-                ->get()
-                ->map(function($product) {
-                    $salesCount = OrderItem::where('product_id', $product->id)->sum('quantity');
-                    
-                    // Calculate stock percentage
-                    $originalStock = $salesCount + $product->stock_remaining;
-                    $stockPercentage = $originalStock > 0 
-                        ? round(($product->stock_remaining / $originalStock) * 100, 2) 
-                        : 0;
-                    
-                    // Calculate revenue
-                    $revenue = OrderItem::where('product_id', $product->id)
-                        ->join('orders', 'order_items.order_id', '=', 'orders.id')
-                        ->where('orders.status', 'completed')
-                        ->sum(DB::raw('order_items.quantity * order_items.price'));
-                    
-                    return [
-                        'id' => $product->id,
-                        'name' => $product->name,
-                        'sales_count' => $salesCount,
-                        'revenue' => (float) $revenue,
-                        'stock_remaining' => $product->stock_remaining,
-                        'stock_percentage' => $stockPercentage
-                    ];
-                });
+            try {
+                // Get low stock products
+                Log::info('Building low stock products query');
+                $lowStockProductsQuery = Product::where('stock', '<=', 10)
+                    ->where('stock', '>', 0)
+                    ->where('status', true)
+                    ->select('id', 'name', 'stock as stock_remaining')
+                    ->orderBy('stock', 'asc')
+                    ->limit($limit);
                 
+                Log::info('Low stock products SQL', ['sql' => $lowStockProductsQuery->toSql(), 'bindings' => $lowStockProductsQuery->getBindings()]);
+                
+                $lowStockProducts = $lowStockProductsQuery->get();
+                Log::info('Low stock products raw result', ['count' => $lowStockProducts->count(), 'data' => $lowStockProducts->toArray()]);
+                
+                $formattedLowStockProducts = $lowStockProducts->map(function($product) {
+                    try {
+                        $salesCount = OrderItem::where('product_id', $product->id)->sum('quantity');
+                        
+                        // Calculate stock percentage
+                        $originalStock = $salesCount + $product->stock_remaining;
+                        $stockPercentage = $originalStock > 0 
+                            ? round(($product->stock_remaining / $originalStock) * 100, 2) 
+                            : 0;
+                        
+                        // Calculate revenue
+                        $revenueQuery = OrderItem::where('product_id', $product->id)
+                            ->join('orders', 'order_items.order_id', '=', 'orders.id')
+                            ->where('orders.status', 'completed');
+                        
+                        Log::info('Product revenue SQL', [
+                            'product_id' => $product->id,
+                            'sql' => $revenueQuery->toSql(),
+                            'bindings' => $revenueQuery->getBindings()
+                        ]);
+                        
+                        $revenue = $revenueQuery->sum(DB::raw('order_items.quantity * order_items.price'));
+                        
+                        return [
+                            'id' => $product->id,
+                            'name' => $product->name,
+                            'sales_count' => $salesCount,
+                            'revenue' => (float) $revenue,
+                            'stock_remaining' => $product->stock_remaining,
+                            'stock_percentage' => $stockPercentage
+                        ];
+                    } catch (\Exception $e) {
+                        Log::error('Error processing low stock product', [
+                            'product_id' => $product->id,
+                            'message' => $e->getMessage()
+                        ]);
+                        return null;
+                    }
+                })->filter();
+            } catch (\Exception $e) {
+                Log::error('Error getting low stock products', [
+                    'message' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+                $formattedLowStockProducts = [];
+            }
+            
+            // Debug return - return empty arrays to test if query is the issue
             return $this->success([
-                'top_selling_products' => $topSellingProducts,
-                'low_stock_products' => $lowStockProducts
+                'top_selling_products' => [], // Return empty array for debugging
+                'low_stock_products' => []    // Return empty array for debugging
+            ], 'Product metrics debug mode - returning empty arrays', 200);
+            
+            /* Original return (commented out for debugging)
+            return $this->success([
+                'top_selling_products' => $formattedTopProducts,
+                'low_stock_products' => $formattedLowStockProducts
             ], 'Product metrics retrieved successfully', 200);
+            */
         });
     }
     

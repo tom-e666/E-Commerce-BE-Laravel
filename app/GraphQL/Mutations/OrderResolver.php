@@ -395,10 +395,6 @@ final readonly class OrderResolver
             return $this->error('Order not found', 404);
         }
 
-        if(!in_array($order->status, ['pending', 'confirmed'])) {
-            return $this->error('Order cannot be cancelled at this stage', 400);
-        }
-
         foreach ($order->items as $item) {
             $product = Product::find($item->product_id);
             if ($product) {
@@ -407,7 +403,7 @@ final readonly class OrderResolver
             }
         }
 
-        if($order->payment){
+        if($order->payment)
             $order->payment->payment_status = 'refunded';
             $order->payment->save();
         }
@@ -442,19 +438,16 @@ final readonly class OrderResolver
             return $this->error('Order not found', 404);
         }
 
-        if ($order->status !== 'confirmed') {
-        return $this->error('Order must be confirmed before shipping', 400);
-    }
-        
+        if ($order->status !== 'confirmed' && $order->status !== 'processing') {
+            return $this->error('Order must be confirmed/processed before shipping', 400);
+        }
         $order->status = 'shipping';
         $order->save();
-
         // Update shipping status if applicable
         if ($order->shipping) {
             $order->shipping->status = 'delivering';
             $order->shipping->save();
         }
-        
         return $this->success([
             'order' => $order->load('items.product'),
         ], 'Order shipped successfully', 200);
@@ -479,17 +472,13 @@ final readonly class OrderResolver
         if ($order === null) {
             return $this->error('Order not found', 404);
         }
-
-        if ($order->status !== 'shipping') {
-            return $this->error('Order must be shipping before completed', 400);
-        }
         
-        $order->status = 'completed';
+        $order->status = 'delivered';
         $order->save();
         
         return $this->success([
             'order' => $order->load('items.product'),
-        ], 'Order completed successfully', 200);
+        ], 'Order delivered successfully', 200);
     }
 
 

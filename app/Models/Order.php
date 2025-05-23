@@ -20,11 +20,9 @@ class Order extends Model
         'total_price',
         'status', // 'pending', 'confirmed', 'processing', 'shipping', 'completed', 'cancelled', 'failed'
     ];
-
     protected $casts = [
         'total_price' => 'float',
     ];
-
     /**
      * Get the user that owns the order.
      */
