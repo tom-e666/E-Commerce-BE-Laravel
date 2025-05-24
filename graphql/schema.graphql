@@ -243,6 +243,7 @@ extend type Mutation {
     stock: Int
     status: Boolean
     brand_id: ID
+    weight: Float
     details: ProductDetailsInput
   ): ProductItemResponse @field(resolver: "ProductResolver@updateProduct") @guard(with: ["api"])
 

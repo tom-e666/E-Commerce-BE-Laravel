@@ -26,9 +26,7 @@ final class CartItemResolver
             return $this->error($validator->errors()->first(), 400);
         }
         $user = AuthService::Auth();
-        if (!$user) {
-            return $this->error('Unauthorized', 401);
-        }
+
         // Check product availability
         $product = Product::find($args['product_id']);
         if (!$product) {
@@ -55,7 +53,7 @@ final class CartItemResolver
                 return $this->error('You are not authorized to update this cart item', 403);
             }
             
-            $cartItem->quantity += $args['quantity'];
+            $cartItem->$args['quantity'];
             $cartItem->save();
         } else {
             // Check create permission using policy
