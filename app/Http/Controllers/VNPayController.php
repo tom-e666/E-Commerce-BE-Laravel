@@ -98,49 +98,4 @@ class VNPayController extends Controller
             ], 400);
         }
     }
-
-    // KHÔNG CẦN handleReturn cho backend API
-    // Return URL sẽ trỏ đến frontend app của bạn
-    
-    // API endpoint để frontend check trạng thái payment
-    public function checkPaymentStatus(Request $request)
-    {
-        try {
-            $orderId = $request->get('order_id');
-            
-            if (!$orderId) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Order ID is required'
-                ], 400);
-            }
-            
-            $payment = Payment::where('order_id', $orderId)->first();
-            
-            if (!$payment) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Payment not found'
-                ], 404);
-            }
-            
-            return response()->json([
-                'success' => true,
-                'data' => [
-                    'order_id' => $payment->order_id,
-                    'payment_status' => $payment->payment_status,
-                    'amount' => $payment->amount,
-                    'transaction_id' => $payment->transaction_id,
-                    'payment_time' => $payment->payment_time,
-                ]
-            ]);
-            
-        } catch (\Exception $e) {
-            Log::error('Check Payment Status Error: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'System error'
-            ], 500);
-        }
-    }
 }

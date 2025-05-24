@@ -408,6 +408,7 @@ extend type Query {
     @guard(with: ["api"]) 
   getUserOrders: OrdersResponse @field(resolver: "OrderResolver@getUserOrders") @guard(with: ["api"])
   getStatusOrder(order_id: ID!): OrderResponse @field(resolver: "OrderResolver@getStatusOrder") @guard(with: ["api"])
+  getOrderByTransaction(transaction_id: String!): OrderResponse @field(resolver: "OrderResolver@getOrderByTransaction") @guard(with: ["api"])
 }
 
 # Mutations
@@ -530,22 +531,10 @@ extend type Mutation {
   
   createPaymentVNPay(
     order_id: String!
-    amount: Float!
-    order_info: String!
-    order_type: String
-    bank_code: String
+    order_type: String!
+    bank_code: String!
     locale: String
   ): VNPayResponse @field(resolver: "PaymentResolver@createPaymentVNPay") @guard(with: ["api"])
-
-  verifyPaymentVNPay(
-    vnp_ResponseCode: String!
-    vnp_TxnRef: String!
-    vnp_Amount: String!
-    vnp_TransactionNo: String
-    vnp_BankCode: String
-    vnp_PayDate: String
-    vnp_SecureHash: String!
-  ): BaseResponseImplementation @field(resolver: "PaymentResolver@verifyPaymentVNPay") @guard(with: ["api"])
 
   vnpayIPN(input: VNPayIPNInput): VNPayIPNResponse @field(resolver: "PaymentResolver@vnpayIPN") @guard(with: ["api"])
 
