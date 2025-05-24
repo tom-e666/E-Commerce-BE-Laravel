@@ -53,7 +53,7 @@ final class CartItemResolver
                 return $this->error('You are not authorized to update this cart item', 403);
             }
             
-            $cartItem->$args['quantity'];
+            $cartItem->quantity = $args['quantity'];
             $cartItem->save();
         } else {
             // Check create permission using policy

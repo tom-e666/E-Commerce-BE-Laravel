@@ -259,6 +259,7 @@ final class ProductResolver
             'stock' => (int) $product->stock,
             'status' => (bool) $product->status,
             'brand_id' => $product->brand_id,
+            'weight' => (float) $product->weight,
             'details' => $productDetail ? [
                 'description' => $productDetail->description,
                 'specifications' => $productDetail->specifications,
