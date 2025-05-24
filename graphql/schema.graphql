@@ -956,6 +956,15 @@ type TopProductsResponse implements BaseResponse {
   low_stock_products: [ProductMetric]
 }
 
+type MetricsResponse implements BaseResponse {
+  code: Int!
+  message: String!
+  sales_metrics: SalesMetricsResponse
+  product_metrics: TopProductsResponse
+  user_metrics: UserMetric
+  support_metrics: SupportMetric
+}
+
 # Queries
 extend type Query {
   # Admin dashboard overview
@@ -974,7 +983,7 @@ extend type Query {
     @guard(with: ["api"]) 
 
   # Support ticket analytics
-  getSupportMetrics: SupportMetric 
+  getSupportMetrics: MetricsResponse 
     @field(resolver: "MetricsResolver@getSupportMetrics") 
     @guard(with: ["api"]) 
 }
