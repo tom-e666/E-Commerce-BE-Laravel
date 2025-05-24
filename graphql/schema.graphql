@@ -378,9 +378,11 @@ input OrderItemInput {
 enum OrderStatus {
   PENDING @enum(value: "pending")
   CONFIRMED @enum(value: "confirmed")
-  SHIPPED @enum(value: "shipped")
-  DELIVERED @enum(value: "delivered")
+  PROCESSING @enum(value: "processing")
+  SHIPPING @enum(value: "shipping")
+  COMPLETED @enum(value: "completed")
   CANCELLED @enum(value: "cancelled")
+  FAILED @enum(value: "failed")
 }
 
 type OrderResponse implements BaseResponse {

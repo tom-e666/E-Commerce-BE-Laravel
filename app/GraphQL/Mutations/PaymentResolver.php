@@ -183,29 +183,44 @@ final readonly class PaymentResolver
 
     public function VNPayIPN($_, array $args)
     {
-        if(!$this->vnpayService->validateReturn($args)){
+        if (!$this->vnpayService->validateReturn($args)) {
             return $this->error('Invalid IPN data', 400);
         }
 
-        if(!isset($args['vnp_ResponseCode']) || $args['vnp_ResponseCode'] !== '00'){
-            return $this->error('Payment failed', 400);
+        if (!isset($args['vnp_ResponseCode'])) {
+            return $this->error('vnp_ResponseCode is required', 400);
         }
+
         $payment = Payment::where('transaction_id', $args['vnp_TxnRef'])->first();
-        if(!$payment){
+        if (!$payment) {
             return $this->error('Payment not found', 404);
         }
 
-        $payment->update([
-            'payment_status' => 'completed',
-        ]);
-
-        // Update order status
         $order = Order::find($payment->order_id);
-        if ($order && $order->status === 'pending') {
-            $order->status = 'confirmed';
-            $order->save();
+
+        if ($args['vnp_ResponseCode'] === '00') {
+            // Thành công
+            $payment->update([
+                'payment_status' => 'completed',
+            ]);
+            if ($order && $order->status === 'pending') {
+                $order->status = 'confirmed';
+                $order->save();
+            }
+            return $this->success([], 'Payment verified successfully', 200);
+        } elseif ($args['vnp_ResponseCode'] === '01') {
+            // Thất bại, huỷ đơn
+            $payment->update([
+                'payment_status' => 'failed',
+            ]);
+            if ($order && $order->status !== 'cancelled') {
+                $order->status = 'cancelled';
+                $order->save();
+            }
+            return $this->error('Payment failed and order cancelled', 400);
+        } else {
+            return $this->error('Payment failed', 400);
         }
-        return $this->success([], 'Payment verified successfully', 200);
     }
     
     public function updatePaymentStatus($_, array $args)
