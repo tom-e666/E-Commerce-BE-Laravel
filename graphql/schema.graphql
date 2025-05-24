@@ -959,10 +959,10 @@ type TopProductsResponse implements BaseResponse {
 type MetricsResponse implements BaseResponse {
   code: Int!
   message: String!
-  sales_metrics: SalesMetricsResponse
-  product_metrics: TopProductsResponse
-  user_metrics: UserMetric
-  support_metrics: SupportMetric
+  open_tickets: String
+  in_progress_tickets: String
+  resolved_tickets: String
+  average_resolution_time: String
 }
 
 # Queries
