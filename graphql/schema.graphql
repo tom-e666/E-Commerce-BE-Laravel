@@ -418,7 +418,7 @@ extend type Query {
 extend type Mutation {
   createOrder(
     typeOrder: String
-    shipping_address: String!
+    shipping_address: String
     items: [OrderItemInput!]!
   ): OrderResponse!
     @field(resolver: "OrderResolver@createOrder")
