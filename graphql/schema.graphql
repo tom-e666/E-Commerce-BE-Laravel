@@ -243,6 +243,7 @@ extend type Mutation {
     stock: Int
     status: Boolean
     brand_id: ID
+    weight: Float
     details: ProductDetailsInput
   ): ProductItemResponse @field(resolver: "ProductResolver@updateProduct") @guard(with: ["api"])
 
@@ -415,7 +416,7 @@ extend type Query {
 extend type Mutation {
   createOrder(
     typeOrder: String
-    shipping_address: String!
+    shipping_address: String
     items: [OrderItemInput!]!
   ): OrderResponse!
     @field(resolver: "OrderResolver@createOrder")
@@ -955,6 +956,15 @@ type TopProductsResponse implements BaseResponse {
   low_stock_products: [ProductMetric]
 }
 
+type MetricsResponse implements BaseResponse {
+  code: Int!
+  message: String!
+  open_tickets: String
+  in_progress_tickets: String
+  resolved_tickets: String
+  average_resolution_time: String
+}
+
 # Queries
 extend type Query {
   # Admin dashboard overview
@@ -973,7 +983,7 @@ extend type Query {
     @guard(with: ["api"]) 
 
   # Support ticket analytics
-  getSupportMetrics: SupportMetric 
+  getSupportMetrics: MetricsResponse 
     @field(resolver: "MetricsResolver@getSupportMetrics") 
     @guard(with: ["api"]) 
 }

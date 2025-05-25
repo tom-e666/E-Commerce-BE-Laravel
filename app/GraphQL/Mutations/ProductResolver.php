@@ -25,9 +25,6 @@ final class ProductResolver
     {
         // Check authentication
         $user = AuthService::Auth();
-        if (!$user) {
-            return $this->error('Unauthorized', 401);
-        }
 
         // Check authorization using policy
         if (Gate::denies('create', Product::class)) {
@@ -104,9 +101,6 @@ final class ProductResolver
     {
         // Check authentication
         $user = AuthService::Auth();
-        if (!$user) {
-            return $this->error('Unauthorized', 401);
-        }
 
         // Validate input
         $validator = Validator::make($args, [
@@ -116,6 +110,7 @@ final class ProductResolver
             'stock' => 'integer|min:0',
             'status' => 'boolean',
             'brand_id' => 'exists:brands,id',
+            'weight' => 'numeric|min:0|nullable',
             'details' => 'array|nullable',
             'details.description' => 'string|nullable',
             'details.images' => 'array|nullable',
@@ -146,6 +141,7 @@ final class ProductResolver
                 'stock' => $args['stock'] ?? $product->stock,
                 'status' => isset($args['status']) ? $args['status'] : $product->status,
                 'brand_id' => $args['brand_id'] ?? $product->brand_id,
+                'weight' => $args['weight'] ?? $product->weight,
             ]);
 
             $product->save();
@@ -263,6 +259,7 @@ final class ProductResolver
             'stock' => (int) $product->stock,
             'status' => (bool) $product->status,
             'brand_id' => $product->brand_id,
+            'weight' => (float) $product->weight,
             'details' => $productDetail ? [
                 'description' => $productDetail->description,
                 'specifications' => $productDetail->specifications,

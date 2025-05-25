@@ -36,9 +36,9 @@ final class SupportTicketResolver
             'status' => SupportTicket::STATUS_OPEN,
         ]);
 
-        return $this->success('Ticket created successfully', 200, [
+        return $this->success([
             'supportTicket' => $supportTicket,
-        ]);
+        ], 'Ticket created successfully', 200);
     }
     
     public function updateSupportTicket($_, array $args)
