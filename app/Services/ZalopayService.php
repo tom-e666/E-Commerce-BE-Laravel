@@ -169,7 +169,7 @@ private function preparePaymentData($order, $appTransId, $callbackUrl, $returnUr
             return false;
         }
         if ($payment && $decodedData['status'] == 1) {
-            $payment->status = 'completed';
+            $payment->payment_status = 'completed';
             $payment->transaction_id = $decodedData['zp_trans_id'] ?? '';
             $payment->save();   
             event(new \App\Events\OrderStatusChanged($payment->order));

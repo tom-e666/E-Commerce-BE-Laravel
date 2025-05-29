@@ -65,7 +65,7 @@ class VNPayController extends Controller
                 // Nếu chưa có payment, tạo mới (tuỳ nghiệp vụ)
                 $payment = Payment::create([
                     'order_id' => $result['order_id'],
-                    'payment_method' => PaymentMethod::VNPAY,
+                    'payment_method' => 'vnpay',
                     'payment_status' => $result['success'] ? PaymentStatus::COMPLETED : PaymentStatus::FAILED,
                     'transaction_id' => $result['transaction_id'],
                     'amount' => $result['amount'],

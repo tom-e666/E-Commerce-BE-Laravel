@@ -48,7 +48,7 @@ class OrderStatusService
             case PaymentStatus::FAILED:
                 return $currentOrderStatus === OrderStatus::PENDING ? OrderStatus::FAILED : null;
                 
-            case PaymentMethod::COD:
+            case PaymentStatus::COD:
                 return $currentOrderStatus === OrderStatus::PENDING ? OrderStatus::CONFIRMED : null;
                 
             default:

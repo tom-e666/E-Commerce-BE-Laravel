@@ -10,6 +10,8 @@ use App\Services\GHNService;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use App\Models\Product;
+use App\GraphQL\Enums\ShippingStatus;
+use App\GraphQL\Enums\OrderStatus;
 
 final readonly class ShippingResolver
 {
@@ -60,7 +62,7 @@ final readonly class ShippingResolver
         if($args['shipping_method'] === 'SHOP'){
             $shipping = Shipping::create([
                 'order_id' => $args['order_id'],
-                'status' => 'pending',
+                'status' => ShippingStatus::PENDING,
                 'address' => $args['address'],
                 'recipient_name' => $args['recipient_name']?? $user->full_name,
                 'recipient_phone' => $args['recipient_phone']?? $user->phone,
@@ -104,7 +106,7 @@ final readonly class ShippingResolver
                 $shipping = Shipping::create([
                     'order_id' => $args['order_id'],
                     'shipping_method' => 'GHN',
-                    'status' => 'pending',
+                    'status' => ShippingStatus::PENDING,
                     'address' => $args['address'],
                     'recipient_name' => $args['recipient_name']?? $user->full_name,
                     'recipient_phone' => $args['recipient_phone']?? $user->phone,
@@ -152,7 +154,7 @@ final readonly class ShippingResolver
                     'message' => 'Order not found',
                 ];
             }
-            if($shipping->status==='delivered'){
+            if($shipping->status === ShippingStatus::DELIVERED){
                 return [
                     'code' => 400,
                     'message' => 'Shipping has been delivered, cannot be cancelled',
@@ -164,12 +166,12 @@ final readonly class ShippingResolver
                 if($shipping->shipping_method==='GHN'){
                     $response = $this->ghnService->cancelShippingOrder($shipping->ghn_order_code);
                     if (isset($response['code']) && $response['code'] === 200) {
-                        $shipping->status = 'cancelled';
+                        $shipping->status = ShippingStatus::FAILED;
                         $shipping->save();
                         
                         // Update order status and restore inventory
-                        if (in_array($order->status, ['confirmed', 'processing', 'shipping'])) {
-                            $order->status = 'cancelled';
+                        if (in_array($order->status, [OrderStatus::CONFIRMED, OrderStatus::PROCESSING, OrderStatus::SHIPPING])) {
+                            $order->status = OrderStatus::CANCELLED;
                             $order->save();
                             
                             // Restore product inventory
@@ -194,8 +196,25 @@ final readonly class ShippingResolver
                     ];
                 }
                 if($shipping->shipping_method==='SHOP'){
-                    $shipping->status = 'cancelled';
+                    $shipping->status = ShippingStatus::FAILED;
                     $shipping->save();
+                    
+                    // Update order status for SHOP cancellation
+                    if (in_array($order->status, [OrderStatus::CONFIRMED, OrderStatus::PROCESSING, OrderStatus::SHIPPING])) {
+                        $order->status = OrderStatus::CANCELLED;
+                        $order->save();
+                        
+                        // Restore product inventory
+                        foreach ($order->items as $item) {
+                            $product = Product::find($item->product_id);
+                            if ($product) {
+                                $product->stock += $item->quantity;
+                                $product->save();
+                            }
+                        }
+                    }
+                    
+                    DB::commit();
                     return [
                         'code' => 200,
                         'message' => 'Shipping cancelled successfully',
@@ -254,8 +273,13 @@ final readonly class ShippingResolver
             ];
         }
         
-        // Validate status
-        $validStatuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
+        // Validate status using enum
+        $validStatuses = [
+            ShippingStatus::PENDING,
+            ShippingStatus::DELIVERING, 
+            ShippingStatus::DELIVERED,
+            ShippingStatus::FAILED
+        ];
         if (!in_array($args['status'], $validStatuses)) {
             return [
                 'code' => 400,
@@ -269,20 +293,20 @@ final readonly class ShippingResolver
             $shipping->status = $args['status'];
             $shipping->save();
             
-            // When shipping is delivered, update order status to delivered
-            if ($args['status'] === 'delivered') {
+            // When shipping is delivered, update order status to completed
+            if ($args['status'] === ShippingStatus::DELIVERED) {
                 $order = Order::find($shipping->order_id);
                 if ($order) {
-                    $order->status = 'delivered';
+                    $order->status = OrderStatus::COMPLETED;
                     $order->save();
                 }
             }
             
-            // When shipping is cancelled, update order and restore inventory
-            if ($args['status'] === 'cancelled') {
+            // When shipping is failed, update order and restore inventory
+            if ($args['status'] === ShippingStatus::FAILED) {
                 $order = Order::find($shipping->order_id);
-                if ($order && in_array($order->status, ['confirmed', 'processing', 'shipping'])) {
-                    $order->status = 'cancelled';
+                if ($order && in_array($order->status, [OrderStatus::CONFIRMED, OrderStatus::PROCESSING, OrderStatus::SHIPPING])) {
+                    $order->status = OrderStatus::FAILED;
                     $order->save();
                     
                     // Restore product inventory
@@ -357,10 +381,10 @@ final readonly class ShippingResolver
         }
         
         // Prevent updates to delivered shipments
-        if ($shipping->status === 'delivered' || $shipping->status === 'shipped') {
+        if ($shipping->status === ShippingStatus::DELIVERED || $shipping->status === ShippingStatus::DELIVERING) {
             return [
                 'code' => 400,
-                'message' => 'Cannot update shipping information for shipments that have already been shipped or delivered',
+                'message' => 'Cannot update shipping information for shipments that are being delivered or have been delivered',
                 'shipping' => null
             ];
         }

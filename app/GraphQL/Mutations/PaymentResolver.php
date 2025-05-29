@@ -7,6 +7,8 @@ use App\Services\AuthService;
 use App\Services\ZalopayService;
 use App\GraphQL\Traits\GraphQLResponse;
 use App\Models\Payment;
+use App\Enums\PaymentStatus;
+use App\Enums\OrderStatus;
 use GraphQL\Error\Error;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Gate;
@@ -34,7 +36,8 @@ final readonly class PaymentResolver
     
     public function createPaymentZalopay($_, array $args)
     {
-        $user = auth('api')->user();
+        $user= auth('api')->user();
+
         
         if(!isset($args['order_id'])) {
             return $this->error('order_id is required', 400);
@@ -55,7 +58,7 @@ final readonly class PaymentResolver
         
         // Check if payment already exists for this order
         $existingPayment = Payment::where('order_id', $args['order_id'])
-                                ->whereIn('payment_status', ['pending', 'completed'])
+                                ->whereIn('payment_status', [PaymentStatus::PENDING, PaymentStatus::COMPLETED])
                                 ->first();
                                 
         if ($existingPayment) {
@@ -77,7 +80,7 @@ final readonly class PaymentResolver
             'order_id' => $args['order_id'],
             'amount' => $order->total_price,
             'payment_method' => 'zalopay',
-            'payment_status' => 'pending',
+            'payment_status' => PaymentStatus::PENDING,
             'transaction_id' => $result['app_trans_id'] ?? $this->generateTransactionId('ZP'),
         ]);
         
@@ -89,7 +92,8 @@ final readonly class PaymentResolver
     
     public function createPaymentCOD($_, array $args)
     {
-        $user = AuthService::Auth(); // pre-handled by middleware
+        $user= auth('api')->user();
+ // pre-handled by middleware
         
         if(!isset($args['order_id'])) {
             return $this->error('order_id is required', 400);
@@ -108,7 +112,7 @@ final readonly class PaymentResolver
         
         // Check if payment already exists for this order
         $existingPayment = Payment::where('order_id', $args['order_id'])
-                                ->whereIn('payment_status', ['pending', 'completed'])
+                                ->whereIn('payment_status', [PaymentStatus::PENDING, PaymentStatus::COMPLETED])
                                 ->first();
                                 
         if ($existingPayment) {
@@ -119,11 +123,11 @@ final readonly class PaymentResolver
             'order_id' => $args['order_id'],
             'amount' => $order->total_price,
             'payment_method' => 'cod',
-            'payment_status' => 'pending',
+            'payment_status' => PaymentStatus::COD,
             'transaction_id' => $this->generateTransactionId('COD'),
         ]);
 
-        $order->status = 'confirmed';
+        $order->status = OrderStatus::CONFIRMED;
         $order->save();
         
         return $this->success([
@@ -132,14 +136,14 @@ final readonly class PaymentResolver
     }
     public function createPaymentVNPay($_, array $args)
     {
-        $user = auth('api')->user();
-        
+        $user= auth('api')->user();
+
         if(!isset($args['order_id'])) {
             return $this->error('order_id is required', 400);
         }
-        
+
         $order = Order::where('id', $args['order_id'])->first();
-        
+
         if(!$order){
             return $this->error('Order not found', 404);
         }
@@ -151,7 +155,7 @@ final readonly class PaymentResolver
         
         // Check if payment already exists for this order
         $existingPayment = Payment::where('order_id', $args['order_id'])
-                                ->whereIn('payment_status', ['pending', 'completed'])
+                                ->whereIn('payment_status', [PaymentStatus::PENDING, PaymentStatus::COMPLETED])
                                 ->first();
                                 
         if ($existingPayment) {
@@ -163,7 +167,7 @@ final readonly class PaymentResolver
             'order_id' => $args['order_id'],
             'amount' => $order->total_price,
             'payment_method' => 'vnpay',
-            'payment_status' => 'pending',
+            'payment_status' => PaymentStatus::PENDING,
             'transaction_id' => $this->generateTransactionId('VNP'),
         ]);
 
@@ -178,6 +182,7 @@ final readonly class PaymentResolver
 
         return $this->success([
             'payment_url' => $paymentUrl,
+            'transaction_id' => $payment->transaction_id,
         ], 'Payment created successfully', 200);
     }
 
@@ -201,20 +206,22 @@ final readonly class PaymentResolver
         if ($args['vnp_ResponseCode'] === '00') {
             // Thành công
             $payment->update([
-                'payment_status' => 'completed',
+                'payment_status' => PaymentStatus::COMPLETED,
             ]);
-            if ($order && $order->status === 'pending') {
-                $order->status = 'confirmed';
+            if ($order && $order->status === OrderStatus::PENDING) {
+                $order->status = OrderStatus::CONFIRMED;
                 $order->save();
             }
-            return $this->success([], 'Payment verified successfully', 200);
+            return $this->success([
+                'transaction_id' => $payment->transaction_id,
+            ], 'Payment verified successfully', 200);
         } elseif ($args['vnp_ResponseCode'] === '01') {
             // Thất bại, huỷ đơn
             $payment->update([
-                'payment_status' => 'failed',
+                'payment_status' => PaymentStatus::FAILED,
             ]);
-            if ($order && $order->status !== 'cancelled') {
-                $order->status = 'cancelled';
+            if ($order && $order->status !== OrderStatus::CANCELLED) {
+                $order->status = OrderStatus::CANCELLED;
                 $order->save();
             }
             return $this->error('Payment failed and order cancelled', 400);
@@ -225,7 +232,8 @@ final readonly class PaymentResolver
     
     public function updatePaymentStatus($_, array $args)
     {
-        $user = AuthService::Auth();
+        $user= auth('api')->user();
+
         
         if (!isset($args['payment_id']) || !isset($args['status'])) {
             return $this->error('payment_id and status are required', 400);
@@ -243,7 +251,12 @@ final readonly class PaymentResolver
         }
         
         // Validate status
-        $validStatuses = ['pending', 'completed', 'failed', 'refunded'];
+        $validStatuses = [
+            PaymentStatus::PENDING,
+            PaymentStatus::COMPLETED,
+            PaymentStatus::FAILED,
+            PaymentStatus::REFUNDED
+        ];
         if (!in_array($args['status'], $validStatuses)) {
             return $this->error('Invalid status. Status must be one of: ' . implode(', ', $validStatuses), 400);
         }
@@ -252,10 +265,10 @@ final readonly class PaymentResolver
         $payment->save();
         
         // If payment is completed, update order status if needed
-        if ($args['status'] === 'completed') {
+        if ($args['status'] === PaymentStatus::COMPLETED) {
             $order = Order::find($payment->order_id);
-            if ($order && $order->status === 'pending') {
-                $order->status = 'confirmed';
+            if ($order && $order->status === OrderStatus::PENDING) {
+                $order->status = OrderStatus::CONFIRMED;
                 $order->save();
             }
         }
@@ -267,7 +280,8 @@ final readonly class PaymentResolver
     
     public function deletePayment($_, array $args)
     {
-        $user = AuthService::Auth();
+        $user= auth('api')->user();
+
         
         if (!isset($args['payment_id'])) {
             return $this->error('payment_id is required', 400);
@@ -285,7 +299,7 @@ final readonly class PaymentResolver
         }
         
         // Only allow deletion if payment is pending or failed
-        if (!in_array($payment->payment_status, ['pending', 'failed'])) {
+        if (!in_array($payment->payment_status, [PaymentStatus::PENDING, PaymentStatus::FAILED])) {
             return $this->error('Cannot delete payments with status: ' . $payment->payment_status, 400);
         }
         
