@@ -315,12 +315,39 @@ type CartItemsResponse implements BaseResponse {
   cart_items: [CartItem]
 }
 
+type PaginatedCartItemsResponse implements BaseResponse {
+  code: Int!
+  message: String!
+  cart_items: [CartItem]
+  pagination: PaginationInfo
+}
+
+type CartSummaryResponse implements BaseResponse {
+  code: Int!
+  message: String!
+  total_items: Int!
+  subtotal: Float!
+  item_count: Int!
+}
+
 # Queries
 extend type Query {
 
   getCartItems(
     user_id: ID
   ): CartItemsResponse @field(resolver: "CartItemResolver@getCartItems") @guard(with: ["api"])
+
+  getPaginatedCartItems(
+    user_id: ID
+    page: Int
+    per_page: Int
+    sort_field: String
+    sort_direction: String
+  ): PaginatedCartItemsResponse @field(resolver: "CartItemResolver@getPaginatedCartItems") @guard(with: ["api"])
+
+  getCartSummary(
+    user_id: ID
+  ): CartSummaryResponse @field(resolver: "CartItemResolver@getCartSummary") @guard(with: ["api"])
 }
 # Mutations
 extend type Mutation {
@@ -400,19 +427,56 @@ type OrdersResponse implements BaseResponse {
   orders: [OrderResult]
 }
 
+type PaginatedOrdersResponse implements BaseResponse {
+  code: Int!
+  message: String!
+  orders: [OrderResult]
+  pagination: PaginationInfo
+}
+
 # Queries
 extend type Query {
   getOrder(order_id: ID!): OrderResponse! @field(resolver: "OrderResolver@getOrder") @guard(with: ["api"])
+
   # ADMIN/STAFF: Can view and filter all orders
   getAllOrders(
     user_id: ID,
     status: String,
     created_after: String,
     created_before: String
-  ): OrdersResponse! 
-    @field(resolver: "OrderResolver@getAllOrders") 
-    @guard(with: ["api"]) 
+  ): OrdersResponse!
+    @field(resolver: "OrderResolver@getAllOrders")
+    @guard(with: ["api"])
+
+  # ADMIN/STAFF: Get paginated orders with filters and sorting
+  getPaginatedOrders(
+    user_id: ID
+    status: String
+    created_after: String
+    created_before: String
+    search: String
+    sort_field: String
+    sort_direction: String
+    page: Int
+    per_page: Int
+  ): PaginatedOrdersResponse
+    @field(resolver: "OrderResolver@getPaginatedOrders")
+    @guard(with: ["api"])
+
+  # USER: Get own orders (non-paginated)
   getUserOrders: OrdersResponse @field(resolver: "OrderResolver@getUserOrders") @guard(with: ["api"])
+
+  # USER: Get own orders with pagination
+  getPaginatedUserOrders(
+    status: String
+    created_after: String
+    created_before: String
+    sort_field: String
+    sort_direction: String
+    page: Int
+    per_page: Int
+  ): PaginatedOrdersResponse @field(resolver: "OrderResolver@getPaginatedUserOrders") @guard(with: ["api"])
+
   getStatusOrder(order_id: ID!): OrderResponse @field(resolver: "OrderResolver@getStatusOrder") @guard(with: ["api"])
   getOrderByTransaction(transaction_id: String!): OrderResponse @field(resolver: "OrderResolver@getOrderByTransaction") @guard(with: ["api"])
 }

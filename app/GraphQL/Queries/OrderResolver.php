@@ -299,7 +299,7 @@ final readonly class OrderResolver
             'total_price' => (float)$order->total_price,
             'created_at' => $order->created_at->format('Y-m-d H:i:s'),
             'items' => $order->items->map(function($item){
-                // Find product details from MongoDB                
+                // Find product details from MongoDB
                 return [
                     'id' => $item->id,
                     'product_id' => $item->product_id,
@@ -310,6 +310,173 @@ final readonly class OrderResolver
                 ];
             })
         ];
+    }
+
+    /**
+     * Get paginated orders for admin/staff with filters and sorting
+     */
+    public function getPaginatedOrders($_, array $args): array
+    {
+        $user = AuthService::Auth();
+        if (!$user || Gate::denies('viewAny', Order::class)) {
+            return $this->error('You are not authorized to view orders', 403);
+        }
+
+        try {
+            $query = Order::query();
+
+            // Apply filters
+            if (isset($args['user_id']) && !empty($args['user_id'])) {
+                $query->where('user_id', $args['user_id']);
+            }
+
+            if (isset($args['status']) && !empty($args['status'])) {
+                $query->where('status', $args['status']);
+            }
+
+            if (isset($args['created_after'])) {
+                $query->where('created_at', '>=', $args['created_after']);
+            }
+
+            if (isset($args['created_before'])) {
+                $query->where('created_at', '<=', $args['created_before']);
+            }
+
+            // Apply search if provided (search in order ID or user info)
+            if (isset($args['search']) && !empty($args['search'])) {
+                $searchTerm = $args['search'];
+                $query->where(function($q) use ($searchTerm) {
+                    $q->where('id', 'like', "%{$searchTerm}%")
+                      ->orWhereHas('user', function($q) use ($searchTerm) {
+                          $q->where('full_name', 'like', "%{$searchTerm}%")
+                            ->orWhere('email', 'like', "%{$searchTerm}%");
+                      });
+                });
+            }
+
+            // Apply sorting
+            $sortField = $args['sort_field'] ?? 'created_at';
+            $sortDirection = $args['sort_direction'] ?? 'desc';
+
+            // Validate sort field to prevent SQL injection
+            $allowedSortFields = ['id', 'user_id', 'status', 'total_price', 'created_at', 'updated_at'];
+            if (!in_array($sortField, $allowedSortFields)) {
+                $sortField = 'created_at';
+            }
+
+            // Validate sort direction
+            $sortDirection = strtolower($sortDirection) === 'asc' ? 'asc' : 'desc';
+            $query->orderBy($sortField, $sortDirection);
+
+            // Apply pagination
+            $page = $args['page'] ?? 1;
+            $perPage = $args['per_page'] ?? 10;
+
+            // Eager load relationships to avoid N+1 queries
+            $orders = $query->with(['items.product', 'user', 'payment'])
+                           ->paginate($perPage, ['*'], 'page', $page);
+
+            // Format orders for response
+            $formattedOrders = collect($orders->items())->map(function ($order) {
+                return $this->formatOrderResponse($order);
+            });
+
+            return $this->success([
+                'orders' => $formattedOrders,
+                'pagination' => [
+                    'total' => $orders->total(),
+                    'current_page' => $orders->currentPage(),
+                    'per_page' => $orders->perPage(),
+                    'last_page' => $orders->lastPage(),
+                    'from' => $orders->firstItem(),
+                    'to' => $orders->lastItem(),
+                    'has_more_pages' => $orders->hasMorePages(),
+                ]
+            ], 'Success', 200);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to fetch paginated orders: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'args' => $args
+            ]);
+            return $this->error('Failed to fetch orders: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Get paginated orders for current user
+     */
+    public function getPaginatedUserOrders($_, array $args): array
+    {
+        $user = AuthService::Auth();
+        if (!$user) {
+            return $this->error('Unauthorized', 401);
+        }
+
+        try {
+            $query = Order::where('user_id', $user->id);
+
+            // Apply filters
+            if (isset($args['status']) && !empty($args['status'])) {
+                $query->where('status', $args['status']);
+            }
+
+            if (isset($args['created_after'])) {
+                $query->where('created_at', '>=', $args['created_after']);
+            }
+
+            if (isset($args['created_before'])) {
+                $query->where('created_at', '<=', $args['created_before']);
+            }
+
+            // Apply sorting
+            $sortField = $args['sort_field'] ?? 'created_at';
+            $sortDirection = $args['sort_direction'] ?? 'desc';
+
+            // Validate sort field to prevent SQL injection
+            $allowedSortFields = ['id', 'status', 'total_price', 'created_at', 'updated_at'];
+            if (!in_array($sortField, $allowedSortFields)) {
+                $sortField = 'created_at';
+            }
+
+            // Validate sort direction
+            $sortDirection = strtolower($sortDirection) === 'asc' ? 'asc' : 'desc';
+            $query->orderBy($sortField, $sortDirection);
+
+            // Apply pagination
+            $page = $args['page'] ?? 1;
+            $perPage = $args['per_page'] ?? 10;
+
+            // Eager load relationships to avoid N+1 queries
+            $orders = $query->with(['items.product', 'payment'])
+                           ->paginate($perPage, ['*'], 'page', $page);
+
+            // Format orders for response
+            $formattedOrders = collect($orders->items())->map(function ($order) {
+                return $this->formatOrderResponse($order);
+            });
+
+            return $this->success([
+                'orders' => $formattedOrders,
+                'pagination' => [
+                    'total' => $orders->total(),
+                    'current_page' => $orders->currentPage(),
+                    'per_page' => $orders->perPage(),
+                    'last_page' => $orders->lastPage(),
+                    'from' => $orders->firstItem(),
+                    'to' => $orders->lastItem(),
+                    'has_more_pages' => $orders->hasMorePages(),
+                ]
+            ], 'Success', 200);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to fetch paginated user orders: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'args' => $args,
+                'user_id' => $user->id
+            ]);
+            return $this->error('Failed to fetch orders: ' . $e->getMessage(), 500);
+        }
     }
 
     public function getStatusOrder($_, array $args): array
