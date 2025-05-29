@@ -297,7 +297,6 @@ final readonly class PaymentResolver
         if (Gate::denies('delete', $payment)) {
             return $this->error('You are not authorized to delete this payment', 403);
         }
-        
         // Only allow deletion if payment is pending or failed
         if (!in_array($payment->payment_status, [PaymentStatus::PENDING, PaymentStatus::FAILED])) {
             return $this->error('Cannot delete payments with status: ' . $payment->payment_status, 400);
