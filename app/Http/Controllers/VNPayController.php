@@ -7,14 +7,19 @@ use App\Services\VNPayService;
 use App\Models\Payment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use App\Services\OrderStatusService;
+use App\GraphQL\Enums\PaymentStatus;
+use App\GraphQL\Enums\PaymentMethod;
 
 class VNPayController extends Controller
 {
     protected $vnpayService;
+    protected $orderStatusService;
 
-    public function __construct(VNPayService $vnpayService)
+    public function __construct(VNPayService $vnpayService, OrderStatusService $orderStatusService)
     {
         $this->vnpayService = $vnpayService;
+        $this->orderStatusService = $orderStatusService;
     }
 
     public function handleIPN(Request $request)
@@ -52,7 +57,7 @@ class VNPayController extends Controller
             $payment = Payment::where('transaction_id', $result['transaction_id'])->first();
             if ($payment) {
                 $payment->update([
-                    'payment_status' => $result['success'] ? 'completed' : 'failed',
+                    'payment_status' => $result['success'] ? PaymentStatus::COMPLETED : PaymentStatus::FAILED,
                     'amount' => $result['amount'],
                     'payment_time' => now(),
                 ]);
@@ -60,21 +65,16 @@ class VNPayController extends Controller
                 // Nếu chưa có payment, tạo mới (tuỳ nghiệp vụ)
                 $payment = Payment::create([
                     'order_id' => $result['order_id'],
-                    'payment_method' => 'vnpay',
-                    'payment_status' => $result['success'] ? 'confirmed' : 'failed',
+                    'payment_method' => PaymentMethod::VNPAY,
+                    'payment_status' => $result['success'] ? PaymentStatus::COMPLETED : PaymentStatus::FAILED,
                     'transaction_id' => $result['transaction_id'],
                     'amount' => $result['amount'],
                     'payment_time' => now(),
                 ]);
             }
 
-            //Update Order status
-            $order = $payment->order;
-            if ($order) {
-                $order->update([
-                    'status' => $result['success'] ? 'confirmed' : 'failed'
-                ]);
-            }
+            //Update Order status using OrderStatusService
+            $this->orderStatusService->updateOrderFromPaymentStatus($payment);
 
             Log::info('VNPay IPN: Payment updated successfully', [
                 'order_id' => $result['order_id'],
