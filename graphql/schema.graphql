@@ -403,26 +403,26 @@ input OrderItemInput {
 }
 
 enum OrderStatus {
-  PENDING @enum(value: "pending")
-  CONFIRMED @enum(value: "confirmed")
-  PROCESSING @enum(value: "processing")
-  SHIPPING @enum(value: "shipping")
-  COMPLETED @enum(value: "completed")
-  CANCELLED @enum(value: "cancelled")
-  FAILED @enum(value: "failed")
+  pending @enum(value: "pending")
+  confirmed @enum(value: "confirmed")
+  processing @enum(value: "processing")
+  shipping @enum(value: "shipping")
+  completed @enum(value: "completed")
+  cancelled @enum(value: "cancelled")
+  failed @enum(value: "failed")
 }
 enum PaymentStatusEnum {
-  PENDING @enum(value: "pending")
-  COMPLETED @enum(value: "completed")     
-  COD @enum(value: "cod")                
-  FAILED @enum(value: "failed")
-  REFUNDED @enum(value: "refunded")
+  pending @enum(value: "pending")
+  completed @enum(value: "completed")     
+  cod @enum(value: "cod")                
+  failed @enum(value: "failed")
+  refunded @enum(value: "refunded")
 }
 enum ShippingStatusEnum {
-  PENDING @enum(value: "pending")
-  DELIVERING @enum(value: "delivering")
-  DELIVERED @enum(value: "delivered")
-  FAILED @enum(value: "failed")
+  pending @enum(value: "pending")
+  delivering @enum(value: "delivering")
+  delivered @enum(value: "delivered")
+  failed @enum(value: "failed")
 }
 
 type OrderResponse implements BaseResponse {
@@ -505,20 +505,53 @@ extend type Mutation {
     @field(resolver: "OrderResolver@createOrderFromCart")
     @guard(with: ["api"])
   
-  cancelOrder(order_id: ID!): BaseResponseImplementation!
+  # Add missing confirmOrder mutation
+  confirmOrder(order_id: ID!): OrderResponse!
+    @field(resolver: "OrderResolver@confirmOrder")
+    @guard(with: ["api"])
+  
+  cancelOrder(order_id: ID!): OrderResponse!
     @field(resolver: "OrderResolver@cancelOrder")
     @guard(with: ["api"])
 
-  processingOrder(order_id: ID!): BaseResponseImplementation!
+  processingOrder(order_id: ID!): OrderResponse!
     @field(resolver: "OrderResolver@processingOrder")
     @guard(with: ["api"])
 
-  shipOrder(order_id: ID!): BaseResponseImplementation!
+  shipOrder(order_id: ID!): OrderResponse!
     @field(resolver: "OrderResolver@shipOrder")
     @guard(with: ["api"])
 
-  deliverOrder(order_id: ID!): BaseResponseImplementation!
-    @field(resolver: "OrderResolver@deliverOrder") 
+  # Change to completeDelivery to match resolver
+  completeDelivery(order_id: ID!): OrderResponse!
+    @field(resolver: "OrderResolver@completeDelivery") 
+    @guard(with: ["api"])
+
+  # Add missing updateOrder mutation
+  updateOrder(
+    order_id: ID!
+    status: String
+    total_price: Float
+  ): OrderResponse!
+    @field(resolver: "OrderResolver@updateOrder")
+    @guard(with: ["api"])
+
+  # Add missing deleteOrder mutation  
+  deleteOrder(
+    order_id: ID!
+    user_id: ID!
+  ): BaseResponseImplementation!
+    @field(resolver: "OrderResolver@deleteOrder")
+    @guard(with: ["api"])
+
+  # Add missing createOrderItem mutation
+  createOrderItem(
+    order_id: ID!
+    product_id: ID!
+    quantity: Int!
+    price: Float!
+  ): BaseResponseImplementation!
+    @field(resolver: "OrderResolver@createOrderItem")
     @guard(with: ["api"])
 
   updateOrderItem(

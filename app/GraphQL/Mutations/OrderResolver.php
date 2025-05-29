@@ -516,15 +516,11 @@ final readonly class OrderResolver
             return $this->error('Internal server error: ' . $e->getMessage(), 500);
         }
     }
-    
-    public function deliverOrder($_,array $args):array
+    public function confirmOrder($_,array $args):array
     {
         $user = auth('api')->user();
-        if (!$user) {
-            return $this->error('Unauthorized', 401);
-        }
         
-        // Only admin or staff can deliver orders
+        // Only admin or staff can confirm orders
         if (!$user->isAdmin() && !$user->isStaff()) {
             return $this->error('Unauthorized', 403);
         }
@@ -538,38 +534,15 @@ final readonly class OrderResolver
             return $this->error('Order not found', 404);
         }
 
-        // Validate order can be delivered
-        if ($order->status !== OrderStatus::SHIPPING) {
-            return $this->error('Order must be in shipping status to be delivered', 400);
+        if ($order->status !== OrderStatus::PENDING) {
+            return $this->error('Order must be pending to be confirmed', 400);
         }
-
-        DB::beginTransaction();
-        try {
-            // Update shipping status if exists
-            $shipping = Shipping::where('order_id', $order->id)->first();
-            if ($shipping) {
-                $shipping->status = ShippingStatus::DELIVERED;
-                $shipping->save();
-            }
-
-            // Update payment status if COD
-            $payment = Payment::where('order_id', $order->id)->first();
-            if ($payment && $payment->payment_method === 'cod') {
-                $payment->payment_status = PaymentStatus::COMPLETED;
-                $payment->save();
-            }
-
-            $order->status = OrderStatus::COMPLETED;
-            $order->save();
-
-            DB::commit();
-            
-            return $this->success([
-                'order' => $this->formatOrderResponse($order),
-            ], 'Order delivered successfully', 200);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return $this->error('Internal server error: ' . $e->getMessage(), 500);
-        }
+        
+        $order->status = OrderStatus::CONFIRMED;
+        $order->save();
+        
+        return $this->success([
+            'order' => $this->formatOrderResponse($order)
+        ], 'Order confirmed successfully', 200);
     }
 }
