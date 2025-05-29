@@ -64,13 +64,11 @@ final readonly class AuthResolver
         
         $user = auth('api')->user();
         
-        $customClaims = [
+        $token = JWTAuth::claims([
             'role' => $user->role,
             'full_name' => $user->full_name,
             'id' => $user->id
-        ];
-        
-        $token = JWTAuth::claims($customClaims)->fromUser($user);
+        ])->attempt($credentials);
         
         $refreshToken = Str::random(60);
 
