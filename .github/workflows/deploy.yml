@@ -1,0 +1,30 @@
+name: Auto Pull and Deploy
+
+on:
+  push:
+    branches: [ main ] # Thay đổi branch nếu cần
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: SSH and deploy
+      uses: appleboy/ssh-action@v0.1.10
+      with:
+        host: ${{ secrets.SERVER_IP }}
+        username: ${{ secrets.SERVER_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        port: ${{ secrets.SERVER_PORT || 22 }}
+        script: |
+          cd /home/azureuser/E-Commerce-BE-Laravel
+          php artisan down
+          sudo -u www-data git pull origin main
+          php artisan lighthouse:clear
+          php artisan config:cache
+          php artisan route:cache
+          php artisan view:cache
+          php artisan up

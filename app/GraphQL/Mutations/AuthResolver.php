@@ -58,11 +58,20 @@ final readonly class AuthResolver
     public function login($_, array $args){
         $credentials = ['email' => $args['email'], 'password' => $args['password']];
         
-        if ( !$token = JWTAuth::attempt($credentials)) {
+        if (!$token = JWTAuth::attempt($credentials)) {
             return $this->error('Invalid credentials', 401);
         }
+        
         $user = auth('api')->user();
-
+        
+        $customClaims = [
+            'role' => $user->role,
+            'full_name' => $user->full_name,
+            'id' => $user->id
+        ];
+        
+        $token = JWTAuth::claims($customClaims)->fromUser($user);
+        
         $refreshToken = Str::random(60);
 
         $existingToken = DB::table('refresh_tokens')
@@ -92,7 +101,7 @@ final readonly class AuthResolver
                 'email' => $user->email,
                 'full_name' => $user->full_name,
                 'phone' => $user->phone,
-                'role' => $user->role,  // Added role field
+                'role' => $user->role,
                 'email_verified' => $user->email_verified,
             ],
         ], 'Login successful');

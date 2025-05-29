@@ -365,7 +365,7 @@ type OrderResult implements Order{
   created_at: String!
   total_price: Float!
   items: [OrderItemDetails!]
-  payment_status: String
+  payment_status: PaymentStatusEnum!
   shipping_address: String
 }
 
@@ -378,9 +378,24 @@ input OrderItemInput {
 enum OrderStatus {
   PENDING @enum(value: "pending")
   CONFIRMED @enum(value: "confirmed")
-  SHIPPED @enum(value: "shipped")
-  DELIVERED @enum(value: "delivered")
+  PROCESSING @enum(value: "processing")
+  SHIPPING @enum(value: "shipping")
+  COMPLETED @enum(value: "completed")
   CANCELLED @enum(value: "cancelled")
+  FAILED @enum(value: "failed")
+}
+enum PaymentStatusEnum {
+  PENDING @enum(value: "pending")
+  COMPLETED @enum(value: "completed")     
+  COD @enum(value: "cod")                
+  FAILED @enum(value: "failed")
+  REFUNDED @enum(value: "refunded")
+}
+enum ShippingStatusEnum {
+  PENDING @enum(value: "pending")
+  DELIVERING @enum(value: "delivering")
+  DELIVERED @enum(value: "delivered")
+  FAILED @enum(value: "failed")
 }
 
 type OrderResponse implements BaseResponse {
@@ -465,7 +480,7 @@ type Payment{
   order_id: ID!
   amount: Float!
   payment_method: String!
-  payment_status: String!
+  payment_status: PaymentStatusEnum!
   created_at: String!
   payment_time: String!
   transaction_id: String
@@ -537,7 +552,7 @@ extend type Mutation {
     locale: String
   ): VNPayResponse @field(resolver: "PaymentResolver@createPaymentVNPay") @guard(with: ["api"])
 
-  vnpayIPN(input: VNPayIPNInput): VNPayIPNResponse @field(resolver: "PaymentResolver@vnpayIPN") @guard(with: ["api"])
+  vnpayIPN(input: VNPayIPNInput): VNPayIPNResponse @field(resolver: "PaymentResolver@vnpayIPN")
 
   createPaymentCOD(
     order_id: String!
@@ -559,7 +574,6 @@ extend type Query {
     @field(resolver: "PaymentResolver@getAllPayments") 
     @guard(with: ["api"]) 
 }
-
 #-----------------------------------------------
 # SHIPPING FEATURE
 #-----------------------------------------------
@@ -567,7 +581,7 @@ type Shipping {
   id: ID!
   order_id: ID!
   estimated_date: String
-  status: String!
+  status: ShippingStatusEnum!
   address: String!
   recipient_name: String!
   recipient_phone: String!
@@ -685,7 +699,7 @@ extend type Mutation {
   
   updateShippingStatus(
     shipping_id: ID!
-    status: String!
+    status: ShippingStatusEnum!
   ): ShippingResponse! 
     @field(resolver: "ShippingResolver@updateShippingStatus") 
     @guard(with: ["api"]) 
