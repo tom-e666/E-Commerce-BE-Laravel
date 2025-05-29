@@ -45,7 +45,7 @@ private function preparePaymentData($order, $appTransId, $callbackUrl, $returnUr
     
     // Format order items for the description
     $itemDescription = $order->items->map(function($item) {
-        return $item->quantity . 'x ' . ($item->product->name ?? 'Product');
+        return "Order from Laptop Ecommerce";
     })->join(', ');
     
     $data = [
@@ -95,7 +95,7 @@ private function preparePaymentData($order, $appTransId, $callbackUrl, $returnUr
             // Increase timeout limits to prevent socket hang up
             $response = Http::timeout(30) // 30 seconds timeout
                             ->withHeaders([
-                                'Content-Type' => 'application/json',
+                                'Content-Type' => 'application/x-www-form-urlencoded',
                             ])->post($url, $data);
                             
             Log::info('ZaloPay Response', ['response' => $response->json()]);
