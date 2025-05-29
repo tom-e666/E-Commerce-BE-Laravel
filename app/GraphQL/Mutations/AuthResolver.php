@@ -64,11 +64,10 @@ final readonly class AuthResolver
         
         $user = auth('api')->user();
         
-        // Tạo custom JWT với role
         $customClaims = [
             'role' => $user->role,
-            'email' => $user->email,
-            'user_id' => $user->id
+            'full_name' => $user->full_name,
+            'id' => $user->id
         ];
         
         $token = JWTAuth::claims($customClaims)->fromUser($user);
