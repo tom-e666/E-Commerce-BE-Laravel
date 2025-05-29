@@ -1,12 +1,14 @@
 <?php declare(strict_types=1);
 
-    namespace App\GraphQL\Mutations;
+namespace App\GraphQL\Mutations;
 
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\CartItem;
 use App\Models\ProductDetail;
 use App\Models\Product;
+use App\Models\Payment;
+use App\Models\Shipping;
 use App\Services\AuthService;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
@@ -15,11 +17,36 @@ use App\GraphQL\Traits\GraphQLResponse;
 use Illuminate\Support\Facades\Log;
 use App\Services\GHNService;
 use App\Models\UserCredential;
-use App\Models\Shipping;
 
 final readonly class OrderResolver
 {
     use GraphQLResponse;
+
+    // Order Status Constants
+    const ORDER_STATUS_PENDING = 'pending';
+    const ORDER_STATUS_CONFIRMED = 'confirmed';
+    const ORDER_STATUS_PROCESSING = 'processing';
+    const ORDER_STATUS_SHIPPING = 'shipping';
+    const ORDER_STATUS_COMPLETED = 'completed';
+    const ORDER_STATUS_CANCELLED = 'cancelled';
+    const ORDER_STATUS_FAILED = 'failed';
+
+    // Payment Method Constants
+    const PAYMENT_METHOD_COD = 'cod';
+    const PAYMENT_METHOD_VNPAY = 'vnpay';
+
+    // Payment Status Constants
+    const PAYMENT_STATUS_PENDING = 'pending';
+    const PAYMENT_STATUS_COMPLETED = 'completed';
+    const PAYMENT_STATUS_FAILED = 'failed';
+
+    // Shipment Status Constants
+    const SHIPMENT_STATUS_PENDING = 'pending';
+    const SHIPMENT_STATUS_DELIVERING = 'delivering';
+    const SHIPMENT_STATUS_DELIVERED = 'delivered';
+    const SHIPMENT_STATUS_CANCELLED = 'cancelled';
+    const SHIPMENT_STATUS_RETURNING = 'returning';
+    const SHIPMENT_STATUS_RETURNED = 'returned';
     
     /** @param  array{}  $args */
     public function __invoke(null $_, array $args)
@@ -28,60 +55,32 @@ final readonly class OrderResolver
     }
     public function updateOrderItem($_,array $args):array
     {
-        $user=AuthService::Auth(); // pre-handled by middleware
-        if(!$user){
-            return [
-                'code' => 401,
-                'message' => 'Unauthorized',
-            ];
-        }
+        $user = auth('api')->user();
+
         if(!isset($args['order_item_id'])){
-            return [
-                'code' => 400,
-                'message' => 'order_item_id is required',
-            ];
+            return $this->error('order_item_id is required', 400);
         }
         $orderItem=OrderItem::find($args['order_item_id']);
         if($orderItem===null || $orderItem->order->user_id !== $user->id){
-            return [
-                'code' => 404,
-                'message' => 'orderItem not found',
-            ];
+            return $this->error('OrderItem not found', 404);
         }
         $orderItem->quantity = $args['quantity'] ?? $orderItem->quantity;
         $orderItem->save();
-        return [
-            'code' => 200,
-            'message' => 'success',
-        ];
+        return $this->success([], 'OrderItem updated successfully', 200);
     }
     public function deleteOrderItem($_,array $args):array
     {
-        $user=AuthService::Auth(); // pre-handled by middleware
-        if(!$user){
-            return [
-                'code' => 401,
-                'message' => 'Unauthorized',
-            ];
-        }
+        $user = auth('api')->user();
+
         if(!isset($args['order_item_id'])){
-            return [
-                'code' => 400,
-                'message' => 'order_item_id is required',
-            ];
+            return $this->error('order_item_id is required', 400);
         }
         $orderItem=OrderItem::find($args['order_item_id']);
         if($orderItem===null || $orderItem->order->user_id !== $user->id){
-            return [
-                'code' => 404,
-                'message' => 'orderItem not found',
-            ];
+            return $this->error('OrderItem not found', 404);
         }
         $orderItem->delete();
-        return [
-            'code' => 200,
-            'message' => 'success',
-        ];
+        return $this->success([], 'OrderItem deleted successfully', 200);
     }
     public function createOrderItem($_,array $args):array
     {
@@ -302,10 +301,6 @@ final readonly class OrderResolver
     private function formatOrderResponse(Order $order): array
     {
         $order->load('items.product.details');
-        Log::info('Order details from MySQL query', [
-            'count' => $order->items->count(),
-            'details' => $order->items->toArray()
-        ]);
 
         // Index by product_id as string            
         return [
@@ -364,22 +359,72 @@ final readonly class OrderResolver
             return $this->error('Order not found', 404);
         }
 
-        if ($order->status !== 'confirmed') {
+        if ($order->status !== self::ORDER_STATUS_CONFIRMED) {
             return $this->error('Order must be confirmed before processing', 400);
         }
         
-        $order->status = 'processing';
+        $order->status = self::ORDER_STATUS_PROCESSING;
         $order->save();
         
-        return $this->success([], 'Order processed successfully', 200);
+        return $this->success([
+            'order' => $this->formatOrderResponse($order)
+        ], 'Order processing started', 200);
+    }
+
+    public function completeDelivery($_, array $args): array
+    {
+        $user = auth('api')->user();
+        
+        if (!$user || (!$user->isAdmin() && !$user->isStaff())) {
+            return $this->error('Unauthorized', 403);
+        }
+        
+        if (!isset($args['order_id'])) {
+            return $this->error('order_id is required', 400);
+        }
+        
+        $order = Order::find($args['order_id']);
+        if ($order === null) {
+            return $this->error('Order not found', 404);
+        }
+
+        if ($order->status !== self::ORDER_STATUS_SHIPPING) {
+            return $this->error('Order must be shipping before completion', 400);
+        }
+
+        DB::beginTransaction();
+        try {
+            $payment = Payment::where('order_id', $order->id)->first();
+            $shipping = Shipping::where('order_id', $order->id)->first();
+
+            // Update shipping status
+            $shipping->status = self::SHIPMENT_STATUS_DELIVERED;
+            $shipping->save();
+
+            // If COD, mark payment as completed
+            if ($payment->payment_method === self::PAYMENT_METHOD_COD) {
+                $payment->payment_status = self::PAYMENT_STATUS_COMPLETED;
+                $payment->save();
+            }
+
+            // Complete order
+            $order->status = self::ORDER_STATUS_COMPLETED;
+            $order->save();
+
+            DB::commit();
+            
+            return $this->success([
+                'order' => $this->formatOrderResponse($order),
+            ], 'Order completed successfully', 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return $this->error('Internal server error: ' . $e->getMessage(), 500);
+        }
     }
 
     public function cancelOrder($_,array $args):array
     {
-        $user = AuthService::Auth();
-        if (!$user) {
-            return $this->error('Unauthorized', 401);
-        }
+        $user = auth('api')->user();
         
         // Only admin or staff can cancel orders
         if (!$user->isAdmin() && !$user->isStaff()) {
@@ -395,45 +440,50 @@ final readonly class OrderResolver
             return $this->error('Order not found', 404);
         }
 
-        if(!in_array($order->status, ['pending', 'confirmed', 'processing'])) {
+        $cancellableStatuses = [
+            self::ORDER_STATUS_PENDING,
+            self::ORDER_STATUS_CONFIRMED,
+            self::ORDER_STATUS_PROCESSING
+        ];
+
+        if (!in_array($order->status, $cancellableStatuses)) {
             return $this->error('Order cannot be cancelled at this stage', 400);
         }
 
-        // Update order status
-        $order->status = 'cancelled';
-        $order->save();
+        DB::beginTransaction();
+        try {
+            // Update order status
+            $order->status = self::ORDER_STATUS_CANCELLED;
+            $order->save();
 
-        // Restore product inventory
-        foreach ($order->items as $item) {
-            $product = Product::find($item->product_id);
-            if ($product) {
-                $product->stock += $item->quantity;
-                $product->save();
+            // Update shipping status
+            $shipping = Shipping::where('order_id', $order->id)->first();
+            $shipping->status = self::SHIPMENT_STATUS_CANCELLED;
+            $shipping->save();
+
+            // Restore product stock
+            $this->restoreOrderStock($order);
+
+            // Handle refund if payment was completed
+            $payment = Payment::where('order_id', $order->id)->first();
+            if ($payment->payment_status === self::PAYMENT_STATUS_COMPLETED && 
+                $payment->payment_method === self::PAYMENT_METHOD_VNPAY) {
+                    // handle refund logic here
             }
-        }
 
-        // Update payment status
-        if($order->payment) {
-            $order->payment->payment_status = 'refunded';
-            $order->payment->save();
+            DB::commit();
+            
+            return $this->success([
+                'order' => $this->formatOrderResponse($order),
+            ], 'Order cancelled successfully', 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return $this->error('Internal server error: ' . $e->getMessage(), 500);
         }
-
-        // Update shipping status
-        if($order->shipping) {
-            $order->shipping->status = 'cancelled';
-            $order->shipping->save();
-        }
-        
-        return $this->success([
-            'order' => $order->load('items.product'),
-        ], 'Order cancelled successfully', 200);
     }
     public function shipOrder($_,array $args):array
     {
-        $user = AuthService::Auth();
-        if (!$user) {
-            return $this->error('Unauthorized', 401);
-        }
+        $user = auth('api')->user();
         
         // Only admin or staff can ship orders
         if (!$user->isAdmin() && !$user->isStaff()) {
@@ -449,19 +499,30 @@ final readonly class OrderResolver
             return $this->error('Order not found', 404);
         }
 
-        if ($order->status !== 'confirmed' && $order->status !== 'processing') {
-            return $this->error('Order must be confirmed or processed before shipping', 400);
+        if ($order->status !== self::ORDER_STATUS_PROCESSING) {
+            return $this->error('Order must be processing before shipping', 400);
         }
-        $order->status = 'shipping';
-        $order->save();
-        // Update shipping status if applicable
-        if ($order->shipping) {
-            $order->shipping->status = 'delivering';
-            $order->shipping->save();
+
+        DB::beginTransaction();
+        try {
+            // Update order status
+            $order->status = self::ORDER_STATUS_SHIPPING;
+            $order->save();
+
+            // Update shipping
+            $shipping = Shipping::where('order_id', $order->id)->first();
+            $shipping->status = self::SHIPMENT_STATUS_DELIVERING;
+            $shipping->save();
+
+            DB::commit();
+            
+            return $this->success([
+                'order' => $this->formatOrderResponse($order),
+            ], 'Order shipped successfully', 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return $this->error('Internal server error: ' . $e->getMessage(), 500);
         }
-        return $this->success([
-            'order' => $order->load('items.product'),
-        ], 'Order shipped successfully', 200);
     }
     public function deliverOrder($_,array $args):array
     {
