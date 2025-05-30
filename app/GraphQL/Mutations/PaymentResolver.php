@@ -7,8 +7,6 @@ use App\Services\AuthService;
 use App\Services\ZalopayService;
 use App\GraphQL\Traits\GraphQLResponse;
 use App\Models\Payment;
-use App\Enums\PaymentStatus;
-use App\Enums\OrderStatus;
 use GraphQL\Error\Error;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Gate;
