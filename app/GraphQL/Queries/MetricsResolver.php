@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Gate;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use App\GraphQL\Enums\OrderStatus;
 
 final class MetricsResolver
 {
@@ -62,17 +63,17 @@ final class MetricsResolver
             $ordersWeek = Order::where('created_at', '>=', $startOfWeek)->count();
             $ordersMonth = Order::where('created_at', '>=', $startOfMonth)->count();
             
-            // Revenue metrics
+            // Revenue metrics - use OrderStatus enum
             $revenueToday = Order::whereDate('created_at', $today)
-                ->where('status', 'completed')
+                ->where('status', OrderStatus::COMPLETED)
                 ->sum('total_price');
             
             $revenueWeek = Order::where('created_at', '>=', $startOfWeek)
-                ->where('status', 'completed')
+                ->where('status', OrderStatus::COMPLETED)
                 ->sum('total_price');
                 
             $revenueMonth = Order::where('created_at', '>=', $startOfMonth)
-                ->where('status', 'completed')
+                ->where('status', OrderStatus::COMPLETED)
                 ->sum('total_price');
             
             // Product metrics
@@ -216,7 +217,7 @@ final class MetricsResolver
             Log::info('Building top selling products query', ['limit' => $limit]);
             
             try {
-                // Get top selling products
+                // Get top selling products - use OrderStatus enum
                 $topSellingProductsQuery = DB::table('order_items')
                     ->join('products', 'order_items.product_id', '=', 'products.id')
                     ->join('orders', 'order_items.order_id', '=', 'orders.id')
@@ -227,7 +228,7 @@ final class MetricsResolver
                         DB::raw('SUM(order_items.quantity * order_items.price) as revenue'),
                         'products.stock as stock_remaining'
                     )
-                    ->where('orders.status', 'completed')
+                    ->where('orders.status', OrderStatus::COMPLETED)
                     ->groupBy('products.id', 'products.name', 'products.stock')
                     ->orderBy('sales_count', 'desc')
                     ->limit($limit);
@@ -286,10 +287,10 @@ final class MetricsResolver
                             ? round(($product->stock_remaining / $originalStock) * 100, 2) 
                             : 0;
                         
-                        // Calculate revenue
+                        // Calculate revenue - use OrderStatus enum
                         $revenueQuery = OrderItem::where('product_id', $product->id)
                             ->join('orders', 'order_items.order_id', '=', 'orders.id')
-                            ->where('orders.status', 'completed');
+                            ->where('orders.status', OrderStatus::COMPLETED);
                         
                         Log::info('Product revenue SQL', [
                             'product_id' => $product->id,
@@ -395,14 +396,14 @@ final class MetricsResolver
             $dbFormat = 'Y-m';
         }
         
-        // Get orders grouped by date format
+        // Get orders grouped by date format - use OrderStatus enum
         $salesData = DB::table('orders')
             ->select(
                 DB::raw("DATE_FORMAT(created_at, '$format') as date"),
                 DB::raw('SUM(total_price) as revenue'),
                 DB::raw('COUNT(*) as orders_count')
             )
-            ->where('status', 'completed')
+            ->where('status', OrderStatus::COMPLETED)
             ->whereBetween('created_at', [$startDate, $endDate])
             ->groupBy(DB::raw("DATE_FORMAT(created_at, '$format')"))
             ->orderBy('date', 'asc')
