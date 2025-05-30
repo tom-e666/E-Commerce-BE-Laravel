@@ -338,6 +338,7 @@ final class ProductResolver
             'id' => $product->id,
             'name' => $product->name,
             'price' => (float) $product->price,
+            'default_price' => (float) $product->default_price,
             'stock' => (int) $product->stock,
             'status' => (bool) $product->status,
             'brand_id' => $product->brand_id,
