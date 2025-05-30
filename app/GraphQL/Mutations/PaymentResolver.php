@@ -13,6 +13,10 @@ use GraphQL\Error\Error;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Gate;
 use App\Services\VNPayService;
+use App\GraphQL\Enums\PaymentStatus;
+use App\GraphQL\Enums\OrderStatus;
+use App\GraphQL\Enums\PaymentMethod;
+use App\GraphQL\Enums\ShippingStatus;
 
 final readonly class PaymentResolver
 {
