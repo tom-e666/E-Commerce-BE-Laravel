@@ -144,7 +144,7 @@ final class ProductResolver
             $sortDirection = $args['sort_direction'] ?? 'desc';
             
             // Validate sort field to prevent SQL injection
-            $allowedSortFields = ['name', 'price', 'created_at', 'stock'];
+            $allowedSortFields = ['id', 'name', 'price', 'created_at', 'stock'];
             if (!in_array($sortField, $allowedSortFields)) {
                 $sortField = 'created_at';
             }

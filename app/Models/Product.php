@@ -28,6 +28,7 @@ class Product extends Model
         'default_price' => 'float',
         'stock' => 'integer',
         'status' => 'boolean',
+        'weight' => 'float',
     ];
 
     public function brand()
