@@ -85,7 +85,7 @@ final class ProductResolver
             
             return $this->success([
                 'product' => $this->formatProductResponse($product),
-            ], 'Product created successfully', 201);
+            ], 'Product created successfully', 200);
         
         } catch (\Exception $e) {
             return $this->error('An error occurred: ' . $e->getMessage(), 500);
