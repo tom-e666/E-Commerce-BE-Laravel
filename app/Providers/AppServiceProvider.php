@@ -30,6 +30,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        Response::macro('localtime', function ($data) {
+            return response()->json($data)
+                ->header('X-Timezone', 'Asia/Ho_Chi_Minh')
+                ->header('X-Timezone-Offset', '+07:00');
+        });
     }
 }
