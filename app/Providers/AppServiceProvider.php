@@ -7,6 +7,7 @@ use App\Services\GHNService;
 use App\Services\ZalopayService;
 use App\Services\EmailVefificationService;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Response;
 class AppServiceProvider extends ServiceProvider
 {
     /**
