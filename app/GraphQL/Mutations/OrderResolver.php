@@ -137,26 +137,12 @@ final readonly class OrderResolver
             $order->total_price = $total_price;
             $order->save();
 
-            DB::commit();
-
             // Remove items from cart if typeOrder is 'cart'
             if (isset($args['typeOrder']) && $args['typeOrder'] === 'cart') {
-                foreach ($args['items'] as $item) {
-                    $cartItem = $user->cartItems()
-                        ->where('product_id', $item['product_id'])
-                        ->first();
-                    
-                    if ($cartItem) {
-                        // Update quantity or delete if quantity is 0
-                        if (isset($item['quantity']) && $item['quantity'] > 0) {
-                            $cartItem->quantity -= $item['quantity'];
-                            $cartItem->save();
-                        } else {
-                            $cartItem->delete();
-                        }
-                    }
-                }
+                $this->removeItemsFromCart($user, $args['items']);
             }
+
+            DB::commit();
 
             return $this->success([
                 'order' => $this->formatOrderResponse($order),
@@ -164,6 +150,36 @@ final readonly class OrderResolver
         } catch (\Exception $e) {
             DB::rollBack();
             return $this->error('Internal server error: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Remove purchased items from user's cart
+     */
+    private function removeItemsFromCart($user, array $items): void
+    {
+        foreach ($items as $item) {
+            $cartItem = $user->cartItems()
+                ->where('product_id', $item['product_id'])
+                ->first();
+            
+            if (!$cartItem) {
+                continue;
+            }
+            
+            $quantityToBuy = $item['quantity'];
+            
+            if ($quantityToBuy >= $cartItem->quantity) {
+                // Xóa hoàn toàn nếu mua hết hoặc mua nhiều hơn
+                $cartItem->delete();
+                Log::info("Removed cart item completely for product_id: {$item['product_id']}");
+            } else {
+                // Trừ số lượng đã mua
+                $oldQuantity = $cartItem->quantity;
+                $cartItem->quantity -= $quantityToBuy;
+                $cartItem->save();
+                Log::info("Updated cart item quantity from {$oldQuantity} to {$cartItem->quantity} for product_id: {$item['product_id']}");
+            }
         }
     }
     public function updateOrder($_,array $args):array

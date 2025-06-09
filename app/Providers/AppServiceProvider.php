@@ -7,6 +7,7 @@ use App\Services\GHNService;
 use App\Services\ZalopayService;
 use App\Services\EmailVefificationService;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Response;
 class AppServiceProvider extends ServiceProvider
 {
     /**
@@ -30,6 +31,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        Response::macro('localtime', function ($data) {
+            return response()->json($data)
+                ->header('X-Timezone', 'Asia/Ho_Chi_Minh')
+                ->header('X-Timezone-Offset', '+07:00');
+        });
     }
 }

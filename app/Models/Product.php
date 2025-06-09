@@ -16,6 +16,7 @@ class Product extends Model
     protected $fillable = [
         'name',
         'price',
+        'default_price',
         'stock',
         'status',
         'brand_id',
@@ -24,8 +25,10 @@ class Product extends Model
     ];
     protected $casts = [
         'price' => 'float',
+        'default_price' => 'float',
         'stock' => 'integer',
         'status' => 'boolean',
+        'weight' => 'float',
     ];
 
     public function brand()
@@ -56,6 +59,7 @@ class Product extends Model
             'product_id' => (string)$this->id,
             'images' => ($details && !empty($details->images)) ? $details->images[0] : null,
             'price' => (float)$this->price,
+            'default_price' => (float)$this->default_price,
             'stock' => (int)$this->stock,
             'status' => (bool)$this->status,
         ];

@@ -146,6 +146,7 @@ type ProductItem {
   id: ID!
   name: String!
   price: Float!
+  default_price: Float!
   stock: Int!
   status: Boolean!
   brand_id: ID!
@@ -229,6 +230,7 @@ extend type Mutation {
   createProduct(
     name: String!
     price: Float!
+    default_price: Float!
     stock: Int!
     status: Boolean!
     brand_id: ID!
@@ -240,6 +242,7 @@ extend type Mutation {
     id: ID!
     name: String
     price: Float
+    default_price: Float
     stock: Int
     status: Boolean
     brand_id: ID

@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Gate;
 use App\GraphQL\Traits\GraphQLResponse;
 use App\Models\ProductDetail;
 use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
 final readonly class OrderResolver
 {
     use GraphQLResponse;
@@ -335,11 +336,13 @@ final readonly class OrderResolver
             }
 
             if (isset($args['created_after'])) {
-                $query->where('created_at', '>=', $args['created_after']);
+                $createdAfter = Carbon::parse($args['created_after'])->startOfDay();
+                $query->where('created_at', '>=', $createdAfter);
             }
 
             if (isset($args['created_before'])) {
-                $query->where('created_at', '<=', $args['created_before']);
+                $createdBefore = Carbon::parse($args['created_before'])->endOfDay();
+                $query->where('created_at', '<=', $createdBefore);
             }
 
             // Apply search if provided (search in order ID or user info)

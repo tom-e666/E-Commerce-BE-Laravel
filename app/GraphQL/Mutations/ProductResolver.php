@@ -35,6 +35,7 @@ final class ProductResolver
         $validator = Validator::make($args, [
             'name' => 'required|string|max:255',
             'price' => 'required|numeric|min:0',
+            'default_price' => 'nullable|numeric|min:0',
             'stock' => 'required|integer|min:0',
             'status' => 'required|boolean',
             'brand_id' => 'required|exists:brands,id',
@@ -55,6 +56,7 @@ final class ProductResolver
             $product = Product::create([
                 'name' => $args['name'],
                 'price' => $args['price'],
+                'default_price' => $args['default_price'] ?? null,
                 'stock' => $args['stock'],
                 'status' => $args['status'],
                 'brand_id' => $args['brand_id'],
@@ -83,7 +85,7 @@ final class ProductResolver
             
             return $this->success([
                 'product' => $this->formatProductResponse($product),
-            ], 'Product created successfully', 201);
+            ], 'Product created successfully', 200);
         
         } catch (\Exception $e) {
             return $this->error('An error occurred: ' . $e->getMessage(), 500);
@@ -107,6 +109,7 @@ final class ProductResolver
             'id' => 'required|exists:products,id',
             'name' => 'string|max:255',
             'price' => 'numeric|min:0',
+            'default_price' => 'nullable|numeric|min:0',
             'stock' => 'integer|min:0',
             'status' => 'boolean',
             'brand_id' => 'exists:brands,id',
@@ -138,6 +141,7 @@ final class ProductResolver
             $product->fill([
                 'name' => $args['name'] ?? $product->name,
                 'price' => $args['price'] ?? $product->price,
+                'default_price' => isset($args['default_price']) ? $args['default_price'] : $product->default_price,
                 'stock' => $args['stock'] ?? $product->stock,
                 'status' => isset($args['status']) ? $args['status'] : $product->status,
                 'brand_id' => $args['brand_id'] ?? $product->brand_id,
@@ -256,6 +260,7 @@ final class ProductResolver
             'id' => $product->id,
             'name' => $product->name,
             'price' => (float) $product->price,
+            'default_price' => (float) $product->default_price,
             'stock' => (int) $product->stock,
             'status' => (bool) $product->status,
             'brand_id' => $product->brand_id,

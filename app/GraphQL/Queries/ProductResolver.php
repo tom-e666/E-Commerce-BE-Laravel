@@ -144,7 +144,7 @@ final class ProductResolver
             $sortDirection = $args['sort_direction'] ?? 'desc';
             
             // Validate sort field to prevent SQL injection
-            $allowedSortFields = ['name', 'price', 'created_at', 'stock'];
+            $allowedSortFields = ['id', 'name', 'price', 'created_at', 'stock'];
             if (!in_array($sortField, $allowedSortFields)) {
                 $sortField = 'created_at';
             }
@@ -280,7 +280,7 @@ final class ProductResolver
             $sortDirection = $args['sort_direction'] ?? 'desc';
             
             // Validate sort field to prevent SQL injection
-            $allowedSortFields = ['name', 'price', 'created_at', 'stock'];
+            $allowedSortFields = ['id', 'name', 'price', 'created_at', 'stock'];
             if (!in_array($sortField, $allowedSortFields)) {
                 $sortField = 'created_at';
             }
@@ -338,6 +338,7 @@ final class ProductResolver
             'id' => $product->id,
             'name' => $product->name,
             'price' => (float) $product->price,
+            'default_price' => (float) $product->default_price,
             'stock' => (int) $product->stock,
             'status' => (bool) $product->status,
             'brand_id' => $product->brand_id,
